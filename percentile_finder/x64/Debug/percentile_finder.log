@@ -1,6 +1,6 @@
-﻿  percentile_finder.cpp
-F:\vyvoj\ppr\percentile_finder\percentile_finder\percentile_finder.cpp(10,1): warning C4005: '_CRT_SECURE_NO_WARNINGS': macro redefinition
-F:\vyvoj\ppr\percentile_finder\percentile_finder\percentile_finder.cpp : message : see previous definition of '_CRT_SECURE_NO_WARNINGS'
-F:\vyvoj\ppr\percentile_finder\percentile_finder\percentile_finder.cpp(64,20): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
-F:\vyvoj\ppr\percentile_finder\percentile_finder\percentile_finder.cpp(120,32): warning C4244: 'initializing': conversion from 'uint64_t' to 'uint32_t', possible loss of data
-  percentile_finder.vcxproj -> F:\vyvoj\ppr\percentile_finder\x64\Debug\percentile_finder.exe
+﻿  number_masker.cpp
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\number_masker.cpp(1,10): fatal error C1083: Cannot open include file: 'pch.h': No such file or directory
+  percentile_finder.cpp
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\percentile_finder.cpp(143,20): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\percentile_finder.cpp(150,20): warning C4244: 'initializing': conversion from 'double_t' to 'uint64_t', possible loss of data
+  Generating Code...

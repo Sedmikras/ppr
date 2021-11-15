@@ -15,27 +15,22 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="percentile_finder.cpp">
+    <ClCompile Include="percentile_finder_test.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
-    <ClCompile Include="number_masker.cpp">
+    <ClCompile Include="pch.cpp">
+      <Filter>Zdrojové soubory</Filter>
+    </ClCompile>
+    <ClCompile Include="..\percentile_finder\number_masker.cpp">
       <Filter>Zdrojové soubory</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="number_masker.h">
+    <ClInclude Include="pch.h">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
-    <ClInclude Include="percentile_finder.h">
+    <ClInclude Include="..\percentile_finder\number_masker.h">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
-      <Filter>Hlavičkové soubory</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="percentile_finder.rc">
-      <Filter>Soubory zdrojů</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

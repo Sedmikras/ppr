@@ -1,0 +1,8 @@
+﻿  number_masker.cpp
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\number_masker.cpp(38,17): warning C4244: 'return': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\number_masker.cpp(41,16): warning C4244: 'initializing': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+C:\Users\Sedmikrás\source\repos\percentile_finder\percentile_finder\number_masker.cpp(45,17): warning C4244: 'return': conversion from 'uint64_t' to 'uint32_t', possible loss of data
+  percentile_finder_test.cpp
+  Generating Code...
+     Creating library C:\Users\Sedmikrás\source\repos\percentile_finder\x64\Debug\percentile_finder_test.lib and object C:\Users\Sedmikrás\source\repos\percentile_finder\x64\Debug\percentile_finder_test.exp
+  percentile_finder_test.vcxproj -> C:\Users\Sedmikrás\source\repos\percentile_finder\x64\Debug\percentile_finder_test.dll

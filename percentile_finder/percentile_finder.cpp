@@ -6,11 +6,10 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include "number_masker.h"
 #ifdef _MSC_VER
 #define _CRT_SECURE_NO_WARNINGS
 #endif
-
-uint16_t STARTING_MASKING_BITS = 8192;
 
 int parse_arguments(std::string* file_name, std::double_t* percentile, uint8_t* execution_mode, int argc, char* argv[]) {
     std::string exec_mode;
@@ -42,54 +41,45 @@ int parse_arguments(std::string* file_name, std::double_t* percentile, uint8_t* 
     return 0;
 }
 
-int main(int argc, char* argv[])
-{
-    std::string file_name;
-    std::double_t looked_up_percentile;
-    uint8_t execution_mode;
-    uint64_t max_size = 104857600;
-
-    if (parse_arguments(&file_name, &looked_up_percentile, &execution_mode, argc, argv)) {
-        return -1;
-    };
-    int errno;
-
-
-    // open the file:
-    std::ifstream file(file_name, std::ios::binary);
-
-    // get its size:
-    file.seekg(0, std::ios::end);
-    uint64_t filesize = file.tellg();
-    file.seekg(0, std::ios::beg);
-    int iterations = ceil(filesize / max_size);
-    uint64_t vectorsize = max_size / 4;
-
-
-
-    std::vector<uint64_t> frequencies(STARTING_MASKING_BITS);
+std::vector<double_t> get_histogram(uint64_t max_size, int iterations, uint64_t filesize, std::ifstream& file, double looked_up_percentile) {
+    uint64_t vectorsize = filesize < max_size ? (uint64_t)ceil(filesize / 4.0) : max_size / 4;
+    uint64_t numbersCount = 0;
+    std::vector<uint64_t> frequencies(vector_size());
+    std::vector<double> fileData(vectorsize);
+    
 
     for (int i = 0; i < iterations; i++) {
         uint64_t to_read = ((i + 1 * max_size) > filesize) ? (filesize - (i * max_size)) : max_size;
-        std::vector<double> fileData(vectorsize);
-        file.read((char*)&fileData[0], max_size);
+        file.read((char*)&fileData[0], to_read);
+
+        /*auto number = fileData.begin();
+        while (number != fileData.end())
+        {
+            // remove odd numbers
+            if ((std::fpclassify(*number) == FP_NORMAL || std::fpclassify(*number) == FP_ZERO) && (*number >= get_lowest_possible_number() && *number <= get_highest_possible_number()))
+            {
+                ++number;
+                uint32_t index = return_index(*number);
+                frequencies[index]++;
+                numbersCount++;
+            }
+            else {
+                number = fileData.erase(number);
+            }
+        }*/
 
         for (int i = 0; i < fileData.size(); i++) {
-            if (std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) {
+            if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (fileData[i] >= get_lowest_possible_number() && fileData[i] <= get_highest_possible_number())) {
                 uint64_t number = (uint64_t)fileData[i];
-                uint16_t index = number >> 51;
+                uint32_t index = return_index(number);
                 frequencies[index]++;
+                numbersCount++;
             }
         }
     }
 
     double lastPercentile = 0;
-    uint64_t numbersCount = 0;
-    for (int i = 0; i < frequencies.size(); i++) {
-        numbersCount += frequencies[i];
-    }
-
-    std::vector<double> percentilesForFrequencies(STARTING_MASKING_BITS);
+    std::vector<double> percentilesForFrequencies(vector_size());
     uint16_t index = 0;
     for (int i = 0; i < frequencies.size(); i++) {
         double percentile = lastPercentile + ((frequencies[i] / (double)numbersCount) * 100);
@@ -101,29 +91,81 @@ int main(int argc, char* argv[])
         }
     }
 
-    uint64_t lowest_number = 0, highest_number = 0;
+    int64_t lowest_number, highest_number;
+    lowest_number = ((int64_t)index << 51) + 0x0000000000000000;
+    highest_number = ((int64_t)index << 51) + 0x0007FFFFFFFFFFFF;
     if (frequencies[index] > max_size) {
         //prvni pruchod -> furt je to moc velke !
-        lowest_number = ((uint64_t)index << 51)  + 0x0000000000000000;
-        highest_number = ((uint64_t)index << 51) + 0x0007FFFFFFFFFFFF;
+        increment_phase(lowest_number, highest_number);
+        return std::vector<double_t>(0);
     }
+    else {
+        file.seekg(0, std::ios::beg);
+        std::vector<double_t> real_values;
+        for (int i = 0; i < iterations; i++) {
+            uint64_t to_read = ((i + 1 * max_size) > filesize) ? (filesize - (i * max_size)) : max_size;
+            file.read((char*)&fileData[0], to_read);
 
-    frequencies = std::vector<uint64_t>(8388608);
-    file.seekg(0, std::ios::beg);
-    for (int i = 0; i < iterations; i++) {
-        uint64_t to_read = ((i + 1 * max_size) > filesize) ? (filesize - (i * max_size)) : max_size;
-        std::vector<double> fileData(vectorsize);
-        file.read((char*)&fileData[0], max_size);
+            /*auto number = fileData.begin();
+            while (number != fileData.end())
+            {
+                // remove odd numbers
+                if ((std::fpclassify(*number) == FP_NORMAL || std::fpclassify(*number) == FP_ZERO) && (*number >= get_lowest_possible_number() && *number <= get_highest_possible_number()))
+                {
+                    ++number;
+                    uint32_t index = return_index(*number);
+                    frequencies[index]++;
+                    numbersCount++;
+                }
+                else {
+                    number = fileData.erase(number);
+                }
+            }*/
 
-        for (int i = 0; i < fileData.size(); i++) {
-            if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (fileData[i] >= lowest_number && fileData[i] <= highest_number)) {
-                uint64_t number = (uint64_t)fileData[i];
-                uint32_t index = number << 11;
-                index = index >> 30;
-                frequencies[index]++;
+            for (int i = 0; i < fileData.size(); i++) {
+                if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (fileData[i] >= lowest_number && fileData[i] <= highest_number)) {
+                    real_values.push_back(fileData[i]);
+                }
             }
         }
+        return real_values;
     }
+}
+
+void find (std::string file_name, std::double_t looked_up_percentile, uint8_t execution_mode) {
+    uint64_t max_size = 104857600;
+    // open the file:
+    std::ifstream file(file_name, std::ios::binary);
+    // get its size:
+    file.seekg(0, std::ios::end);
+    uint64_t filesize = file.tellg();
+    file.seekg(0, std::ios::beg);
+    int iterations = ceil((double)filesize / max_size);
+    std::vector<double_t> frequencies;
+    do
+    {
+        frequencies = get_histogram(max_size, iterations, filesize, file, looked_up_percentile);
+    } while (frequencies.size() == 0);
+    std::sort(frequencies.begin(), frequencies.end());
+    uint64_t index = looked_up_percentile / 100 * frequencies.size();
+    double_t value = frequencies[index];
+    printf("Hledaný percentil:%f \n", frequencies[index]);
+}
+
+int main(int argc, char* argv[])
+{
+    std::string file_name;
+    std::double_t looked_up_percentile;
+    uint8_t execution_mode;
+
+    if (parse_arguments(&file_name, &looked_up_percentile, &execution_mode, argc, argv)) {
+        return -1;
+    };
+    int errno;
+
+    initialize();
+    find(file_name, looked_up_percentile, execution_mode);
+
     do
     {
         std::cout << '\n' << "Press a key to continue...";
