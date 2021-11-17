@@ -1,15 +1,11 @@
-// percentile_finder.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
 
 #include <iostream>
 #include <stdio.h>
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <execution>
 #include "number_masker.h"
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
-#endif
 
 int parse_arguments(std::string* file_name, std::double_t* percentile, uint8_t* execution_mode, int argc, char* argv[]) {
     std::string exec_mode;
@@ -42,93 +38,129 @@ int parse_arguments(std::string* file_name, std::double_t* percentile, uint8_t* 
 }
 
 std::vector<double_t> get_histogram(uint64_t max_size, int iterations, uint64_t filesize, std::ifstream& file, double looked_up_percentile) {
-    uint64_t vectorsize = filesize < max_size ? (uint64_t)ceil(filesize / 4.0) : max_size / 4;
+    uint64_t vectorsize = filesize < max_size ? (uint64_t)ceil(filesize / 8.0) : (uint64_t)max_size / 8;
     uint64_t numbersCount = 0;
+    auto phase_vectorsize = vector_size();
     std::vector<uint64_t> frequencies(vector_size());
     std::vector<double> fileData(vectorsize);
-    
+    auto low = get_lowest_possible_number();
+    auto high = get_highest_possible_number();
+    auto ff = file.tellg();
+    auto ienqkwn = 0;
+    if (file.fail()) {
+        file.clear();
+    }
+    file.seekg(0);
 
     for (int i = 0; i < iterations; i++) {
+        uint64_t actual_position = file.tellg();
         uint64_t to_read = ((i + 1 * max_size) > filesize) ? (filesize - (i * max_size)) : max_size;
         file.read((char*)&fileData[0], to_read);
+        uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
 
-        /*auto number = fileData.begin();
-        while (number != fileData.end())
-        {
-            // remove odd numbers
-            if ((std::fpclassify(*number) == FP_NORMAL || std::fpclassify(*number) == FP_ZERO) && (*number >= get_lowest_possible_number() && *number <= get_highest_possible_number()))
-            {
-                ++number;
-                uint32_t index = return_index(*number);
-                frequencies[index]++;
-                numbersCount++;
-            }
-            else {
-                number = fileData.erase(number);
-            }
-        }*/
-
-        for (int i = 0; i < fileData.size(); i++) {
-            if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (fileData[i] >= get_lowest_possible_number() && fileData[i] <= get_highest_possible_number())) {
-                uint64_t number = (uint64_t)fileData[i];
+        for (int j = 0; j < size; j++) {
+            if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO)) {
+                double_t doublicek = fileData[i];
+                int64_t number = *(int64_t*)&doublicek;
                 uint32_t index = return_index(number);
+                doublicek = *(double*)&number;
                 frequencies[index]++;
                 numbersCount++;
             }
         }
     }
 
-    double lastPercentile = 0;
-    std::vector<double> percentilesForFrequencies(vector_size());
-    uint16_t index = 0;
+    //vyhodnoceni
+    auto total_of_numbers = get_max_count() == 0 ? numbersCount : get_max_count();
+    uint64_t numbers_before = get_numbers_before();
+    uint64_t counter = numbers_before;
+    double last_percentile = ((double)numbers_before / total_of_numbers) * 100;
+    uint32_t index = 0;
+    auto phase = get_phase();
+
+
     for (int i = 0; i < frequencies.size(); i++) {
-        double percentile = lastPercentile + ((frequencies[i] / (double)numbersCount) * 100);
-        percentilesForFrequencies[i] = lastPercentile;
-        lastPercentile = percentile;
-        if (percentile > looked_up_percentile) {
+        counter += frequencies[i];
+
+        double percentile = ((double)(counter) / total_of_numbers) * 100;
+        if (percentile > looked_up_percentile && last_percentile < looked_up_percentile) {
             index = i;
             break;
         }
+        last_percentile = percentile;
+        numbers_before += frequencies[i];
     }
 
-    int64_t lowest_number, highest_number;
-    lowest_number = ((int64_t)index << 51) + 0x0000000000000000;
-    highest_number = ((int64_t)index << 51) + 0x0007FFFFFFFFFFFF;
-    if (frequencies[index] > max_size) {
-        //prvni pruchod -> furt je to moc velke !
-        increment_phase(lowest_number, highest_number);
+    
+    // vejde se to tam ?
+    if (frequencies[index] > max_size && phase < 2) {
+        //NE ?prvni pruchod -> furt je to moc velke !
+        increment_phase(index, numbersCount, numbers_before);
         return std::vector<double_t>(0);
     }
     else {
-        file.seekg(0, std::ios::beg);
-        std::vector<double_t> real_values;
+        //vejde se to tam - potØebujem najít ten prvek a jeho pozice
+        uint64_t number_of_elements = counter - numbers_before;
+        auto number_of_elems = frequencies[index];
+        auto phase_vectorsize = vector_size();
+        auto phase = get_phase();
+        std::vector<int64_t>  numbers(0);
+        std::vector<uint64_t> first_encounter(phase_vectorsize);
+        std::vector<uint64_t> last_encounter(phase_vectorsize);
+        numbersCount = 0;
+        file.seekg(0);
+        if (file.fail()) {
+            file.clear();
+        }
+        int64_t lowest_number, highest_number;
+        lowest_number = get_lowest_possible_number(index);
+        double loww = *(int64_t*)&lowest_number;
+        highest_number = get_highest_possible_number(index);
+        double high = *(int64_t*)&highest_number;
         for (int i = 0; i < iterations; i++) {
             uint64_t to_read = ((i + 1 * max_size) > filesize) ? (filesize - (i * max_size)) : max_size;
             file.read((char*)&fileData[0], to_read);
 
-            /*auto number = fileData.begin();
-            while (number != fileData.end())
-            {
-                // remove odd numbers
-                if ((std::fpclassify(*number) == FP_NORMAL || std::fpclassify(*number) == FP_ZERO) && (*number >= get_lowest_possible_number() && *number <= get_highest_possible_number()))
-                {
-                    ++number;
-                    uint32_t index = return_index(*number);
-                    frequencies[index]++;
-                    numbersCount++;
-                }
-                else {
-                    number = fileData.erase(number);
-                }
-            }*/
-
             for (int i = 0; i < fileData.size(); i++) {
-                if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (fileData[i] >= lowest_number && fileData[i] <= highest_number)) {
-                    real_values.push_back(fileData[i]);
+                double_t var = fileData[i];
+                int64_t number = *(int64_t*)&var;
+                auto iindex = return_index(fileData[i]);
+                if ((std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) && (number >= lowest_number && number < highest_number)) {
+                    double_t doublicek = fileData[i];
+                    int64_t number = *(int64_t*)&doublicek;
+                    uint32_t index = return_index(number);
+                    numbers.push_back(number);
+                    uint64_t position = file.tellg();
+                    if (first_encounter[index] == 0) {
+                        first_encounter[index] = position;
+                    }
+                    last_encounter[index] = position;
+                    numbersCount++;
                 }
             }
         }
-        return real_values;
+        std::sort(numbers.begin(), numbers.end());
+        counter = numbers_before;
+        auto numbereara = frequencies[index];
+        auto aaaaa = frequencies[index - 1];
+        for (int i = 0; i < numbers.size(); i++) {
+            counter++;
+            double percentile = ((double)(counter) / total_of_numbers) * 100;
+            if (percentile >= looked_up_percentile && last_percentile < looked_up_percentile) {
+                index = i;
+                break;
+            }
+            last_percentile = percentile;
+        }
+        int64_t number_finder = numbers[index];
+        auto encounter_index = return_index(index);
+        uint64_t first_enc = first_encounter[encounter_index];
+        uint64_t last_enc = last_encounter[encounter_index];
+        double aaaaaaaa = *(double*)&number_finder;
+        printf("Hledaný percentil:%f \n", aaaaaaaa);
+        std::vector<double_t> result(0);
+        result.push_back(aaaaaaaa);
+        return result;
     }
 }
 
@@ -139,21 +171,27 @@ void find (std::string file_name, std::double_t looked_up_percentile, uint8_t ex
     // get its size:
     file.seekg(0, std::ios::end);
     uint64_t filesize = file.tellg();
-    file.seekg(0, std::ios::beg);
-    int iterations = ceil((double)filesize / max_size);
+    uint32_t iterations = (uint32_t)ceil((double)filesize / max_size);
     std::vector<double_t> frequencies;
     do
     {
+        file.seekg(0, std::ios::beg);
         frequencies = get_histogram(max_size, iterations, filesize, file, looked_up_percentile);
     } while (frequencies.size() == 0);
-    std::sort(frequencies.begin(), frequencies.end());
-    uint64_t index = looked_up_percentile / 100 * frequencies.size();
-    double_t value = frequencies[index];
-    printf("Hledaný percentil:%f \n", frequencies[index]);
+    printf("Hledaný percentil:%f \n", frequencies[0]);
+    file.close();
 }
 
 int main(int argc, char* argv[])
 {
+    int64_t a = INT64_MAX-4;
+    double aaa = *(double*)&a;
+    a = INT64_MIN;
+    double bbb = *(double*)&a;
+    a = 0;
+    bbb = *(double*)&a;
+    a = 0x8000000000000000;
+    bbb = *(double*)&a;
     std::string file_name;
     std::double_t looked_up_percentile;
     uint8_t execution_mode;
@@ -162,23 +200,19 @@ int main(int argc, char* argv[])
         return -1;
     };
     int errno;
-
     initialize();
     find(file_name, looked_up_percentile, execution_mode);
 
-    do
-    {
-        std::cout << '\n' << "Press a key to continue...";
-    } while (std::cin.get() != '\n');
+    // open the file:
+    std::ifstream file(file_name, std::ios::binary);
+    // get its size:
+    uint64_t beginingsize = file.tellg();
+    file.seekg(0, std::ios::end);
+    uint64_t filesize = file.tellg();
+    file.seekg(std::ios::beg);
+    std::vector<double> fileData((uint64_t)(ceil(filesize / 8)) + 1);
+    file.read((char*)&fileData[0], filesize);
 
-    
-
-
-
-    // read the data:
-    
-    
-    /*
     for (int i = 0; i < fileData.size(); i++)
     {
         if (std::fpclassify(fileData[i]) == FP_NORMAL || std::fpclassify(fileData[i]) == FP_ZERO) {
@@ -188,34 +222,17 @@ int main(int argc, char* argv[])
             fileData.erase(fileData.begin() + 1);
         }
     }
-    std::sort(fileData.begin(), fileData.end());
-    uint64_t index = percentile / 100 * fileData.size();
-    */
-    /*
-    for (int i = 0; i < fileData.size(); i++) {
-        uint64_t number = (uint64_t)fileData[i];
-        uint16_t index = number >> 53;
-        frequencies[index]++;
-    }
 
-    double lastPercentile = 0;
-    uint64_t numbersCount = 0;
-    for (int i = 0; i < frequencies.size(); i++) {
-        numbersCount += frequencies[i];
-    }
-    std::vector<double> percentilesForFrequencies(2048);
-    for (int i = 0; i < frequencies.size(); i++) {
-        double percentile = lastPercentile + ((frequencies[i] / (double)numbersCount) * 100);
-        percentilesForFrequencies[i] = lastPercentile;
-        lastPercentile = percentile;
-    }
-    printf("Hledaný percentil:%f \n", fileData[index]);
+    std::sort(std::execution::par_unseq, fileData.begin(), fileData.end());
+    uint64_t index = (uint64_t)(looked_up_percentile / 100 * fileData.size()) -1;
+    double result = fileData[index];
+    printf("Hledaný percentil:%f \n", result);
     do
     {
         std::cout << '\n' << "Press a key to continue...";
-    } while (std::cin.get() != '\n');*/
+    } while (std::cin.get() != '\n');
 
-    return 0;
+    return 0; 
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
