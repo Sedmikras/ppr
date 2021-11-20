@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -22,7 +22,7 @@
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{cfef046d-6112-4b3a-ab88-50807c338071}</ProjectGuid>
-    <RootNamespace>percentilefinder</RootNamespace>
+    <RootNamespace>percentile_finder</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -78,6 +78,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
+    <CodeAnalysisRuleSet>MixedRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
@@ -117,7 +119,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <Optimization>Disabled</Optimization>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp17</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
@@ -142,13 +144,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="number_masker.cpp" />
+    <ClCompile Include="filereader.cpp" />
+    <ClCompile Include="number_masker_serial.cpp" />
     <ClCompile Include="percentile_finder.cpp" />
+    <ClCompile Include="resolver.cpp" />
+    <ClCompile Include="resolver_serial.cpp" />
+    <ClCompile Include="watchdog.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="number_masker.h" />
-    <ClInclude Include="percentile_finder.h" />
+    <ClInclude Include="default_config.h" />
+    <ClInclude Include="filereader.h" />
+    <ClInclude Include="resolver.h" />
+    <ClInclude Include="resolver_serial.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="watchdog.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="percentile_finder.rc" />

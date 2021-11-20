@@ -139,20 +139,19 @@ namespace percentile_finder {
 		}
 
 	}
-}
 
+	int main(int argc, char* argv[])
+	{
+		Config config =	parse_arguments(argc, argv);
+		try {
+			solve(config);
+		}
+		catch (const std::exception& e) {
+			std::wcout << "Error occurred: " << e.what() << std::endl;
+			return 1;
+		}
 
-int main(int argc, char* argv[])
-{
-	percentile_finder::Config config = percentile_finder::parse_arguments(argc, argv);
-	try {
-		percentile_finder::solve(config);
+		return 0;
+
 	}
-	catch (const std::exception& e) {
-		std::wcout << "Error occurred: " << e.what() << std::endl;
-		return 1;
-	}
-
-	return 0;
-
 }
