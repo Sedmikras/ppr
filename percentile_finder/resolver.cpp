@@ -71,4 +71,8 @@ namespace percentile_finder {
         ResolverResult r{ r.result = realData[index], positions.at(number) };
         return r;
 	}
+
+    void PercentileFinder::reset_config()
+    {
+    }
 }

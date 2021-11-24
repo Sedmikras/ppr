@@ -69,6 +69,9 @@ class PercentileFinder {
          */
         virtual ResolverResult find_percentile(std::ifstream& file, uint8_t percentile);
 
+
+        virtual void reset_config();
+
         /**
          * Virtual destructor to enable subclasses to cleanup after themselves.
          */
