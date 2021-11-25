@@ -2,10 +2,10 @@
 
 #include "resolver.h"
 #include "resolver_serial.h"
+#include "default_config.h"
 
 namespace percentile_finder {
-
-   
+  
     /**
      * Serial percentile finder.
      *
@@ -48,10 +48,23 @@ namespace percentile_finder {
         */
         uint64_t numbers_before = 0;
 
+        std::vector<double_t> data_buffer;
+        std::vector<double_t> parsed_buffer;
+
+        std::vector<uint64_t> frequencies;
+
         uint32_t iterations = 0;
         NumberMasker masker;
         ResolverResult find_result(std::ifstream& file, uint8_t percentile);
         void eval(std::vector<uint64_t> frequencies, uint8_t percentile, PartialResult* pr);
-        void resolve(std::ifstream& file, uint64_t filesize, uint32_t iterations, uint8_t percentile, PartialResult* pr);
+        void resolve(void* numbers_counter);
+        void barrier_wait();
+        void read_data(std::ifstream file, size_t to_read);
+        //void read_data(std::ifstream file, size_t to_read);
+        std::mutex mMutex;
+        std::condition_variable mCond;
+        std::size_t mThreshold = 2;
+        std::size_t mCount = 2;
+        std::size_t mGeneration = 0;
     };
 }

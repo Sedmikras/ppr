@@ -1,12 +1,11 @@
 #include "resolver_parallel.h"
 #include "default_config.h"
 #include <iostream>
-#include <vector>
-#include <algorithm>
-#include <numeric>
-#include <future>
 #include <string>
-#include <mutex>
+#include <thread>
+#include <vector>
+#include <tbb/parallel_pipeline.h>
+
 namespace percentile_finder {
 
     PercentileFinderParallel::PercentileFinderParallel(Watchdog watchdog) noexcept :
@@ -15,66 +14,84 @@ namespace percentile_finder {
         this->numbers_count = 0;
     }
 
+    void PercentileFinderParallel::barrier_wait() {
+        std::unique_lock<std::mutex> lLock{ mMutex };
+        auto lGen = mGeneration;
+        if (!--mCount) {
+            mGeneration++;
+            mCount = mThreshold;
+            parsed_buffer = data_buffer;
+            mCond.notify_all();
 
-
-    void read_data(size_t to_read, std::ifstream& file, std::promise<std::vector<double>> prom) {
-        std::vector<double> file_data(to_read / 8);
-        file.read((char*)&file_data[0], to_read);
-        prom.set_value(file_data);
+        }
+        else {
+            mCond.wait(lLock, [this, lGen] { return lGen != mGeneration; });
+        }
     }
 
-    void process_data(std::future<std::vector<double>>& fut, void* masker_pointer, void* frequencies_pointer, void* numbers_count_pointer) {
-        std::vector<double> file_data = fut.get();
-        NumberMasker* masker = (NumberMasker*)masker_pointer;
-        std::vector<uint64_t> frequencies = *(std::vector<uint64_t>*)frequencies_pointer;
-        uint64_t numbers_count = *(uint64_t*)numbers_count_pointer;
-        for (int j = 0; j < file_data.size(); j++) {
-            uint32_t index = masker->return_index_from_double(file_data[j]);
+    void PercentileFinderParallel::read_data(std::ifstream file, size_t to_read) {
+        file.read((char*)&data_buffer[0], to_read);
+        barrier_wait();
+    }
+
+    void PercentileFinderParallel::eval(std::vector<uint64_t> frequencies, uint8_t percentile, PartialResult* pr)
+    {
+    }
+
+    void PercentileFinderParallel::resolve(void* numbers_counter)
+    {
+        uint64_t numbers = (uint64_t)&numbers_counter;
+        for (int j = 0; j < data_buffer.size(); j++) {
+            uint32_t index = masker.return_index_from_double(data_buffer[j]);
             if (index == UINT32_MAX) {
                 continue;
             }
             else {
-
                 frequencies[index]++;
-                numbers_count++;
+                
+                numbers++;
             }
         }
+        barrier_wait();
     }
 
 
-    ResolverResult PercentileFinderParallel::find_result(std::ifstream& file, uint8_t percentile)
+    ResolverResult PercentileFinderParallel::find_percentile(std::ifstream& file, uint8_t percentile)
     {
         if (filesize == 0) {
             reset_filereader(file);
             file.seekg(0, std::ios::end);
             filesize = file.tellg();
             iterations = (uint32_t)ceil((double)filesize / MAX_BUFFER_SIZE);
+            file.seekg(std::ios::beg);
         }
         uint64_t max_readable_vector_size = filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(filesize / 8.0) : MAX_VECTOR_SIZE;
-        uint64_t numbers_counter = 0;
-        std::vector<uint64_t> frequencies(masker.get_masked_vector_size());
+        int i = 0;
+        uint64_t to_read = ((i + 1 * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE)) : MAX_BUFFER_SIZE;
+        i++;
+        data_buffer = std::vector<double_t>(max_readable_vector_size);
+        read_data(std::move(file), to_read);
+        parsed_buffer = data_buffer;
+        uint64_t numbers_count;
+        std::vector<std::thread> threads;
+        for (i; i < iterations; i++) {
+            
+            data_buffer = std::vector<double_t>(max_readable_vector_size);
+            std::thread miner(read_data, file, to_read);
+            threads.emplace_back(miner);
+            std::thread worker(&resolve, (void*)&numbers_count);
+            threads.emplace_back(worker);
+        }
+        for (unsigned int i = 0; i < threads.size(); ++i)
+        {
+            if (threads[i].joinable())
+                threads.at(i).join();
+        }
 
-        std::promise<std::vector<double>> prom;                     
-
-        std::future<std::vector<double>> fut = prom.get_future();    
-
-        std::thread th1(process_data, std::ref(fut), (void*)&this->masker, (void*)&frequencies, (void*)&numbers_count);  
-        for (int i = 0; i < iterations; i++) {
-            uint64_t to_read = ((i + 1 * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE)) : MAX_BUFFER_SIZE;
-            read_data(to_read, file, std::move(prom));
-        }                                                         
-        th1.join();
-        numbers_counter = numbers_counter;
         ResolverResult r;
         r.result = 5;
-        Position p;
-        p.last = 0;
-        p.first = 0;
-        r.position = p;
         return r;
     }
-
-
 
     void percentile_finder::PercentileFinderParallel::reset_config()
     {
