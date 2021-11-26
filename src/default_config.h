@@ -5,7 +5,7 @@
 namespace percentile_finder {
 	const std::uint64_t MAX_BUFFER_SIZE = (1 << 27);
 	const std::uint64_t MAX_VECTOR_SIZE = MAX_BUFFER_SIZE / 8;
-	const std::uint64_t TEST_MAX_VECTOR_SIZE = 2;
+	const std::uint64_t TEST_MAX_VECTOR_SIZE = MAX_BUFFER_SIZE;
 	const std::uint8_t PHASE_ZERO_BITS = 13;
 	const std::uint8_t PHASE_ONE_BITS = 23;
 	const std::uint8_t PHASE_TWO_BITS = 28;

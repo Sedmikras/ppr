@@ -9,10 +9,6 @@
         "${env.INCLUDE}",
         "${workspaceRoot}\\**"
       ],
-      "variables": [{
-        "name": "CMAKE_TOOLCHAIN_FILE",
-        "value": "C:/Soft/vcpkg/scripts/buildsystems/vcpkg.cmake"
-      }],
       "defines": [
         "WIN32",
         "_DEBUG",

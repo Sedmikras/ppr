@@ -238,13 +238,16 @@ void test_resolver(int argc, char* argv[]) {
 	percentile_finder::ResolverResult r2{ 0, NULL };
 	std::unique_ptr<percentile_finder::PercentileFinder> finder;
 	finder = std::make_unique<percentile_finder::PercentileFinderParallel>();
+    std::unique_ptr<percentile_finder::PercentileFinder> finder_serial;
+    finder_serial = std::make_unique<percentile_finder::PercentileFinderSerial>();
 	std::ifstream file(config.filename, std::ios::binary);
 
 	for (int i = 51; i <= 100; i++) {
 		config.percentile = i;
 		try {
 			finder->reset_config();
-			r1 = finder->find_percentile(file, i); 
+			r1 = finder->find_percentile(file, i);
+            r2 = finder_serial->find_percentile(file, i);
 			std::wcout << r1.result << ";" << "\n";
 			//r2 = find_percentile(file, i);
 			if (r1.result == r2.result) {
