@@ -42,6 +42,7 @@ namespace percentile_finder {
 class PercentileFinder {
 
     public:
+        Watchdog* watchdog;
         /**
          * Find a value from file on the given percentile.
          *
@@ -58,18 +59,20 @@ class PercentileFinder {
          */
         virtual ~PercentileFinder() noexcept;
 
-    protected:
+    /**
+    * Initialize a new percentile solver.
+    *
+    * @param watchdog The watchdog.
+    * @param max_interval_size The maximum size of the final interval.
+    */
+    explicit PercentileFinder() noexcept;
 
-        /**
-        * Initialize a new percentile solver.
-        *
-        * @param watchdog The watchdog.
-        * @param max_interval_size The maximum size of the final interval.
-        */
-        explicit PercentileFinder() noexcept;
+    explicit PercentileFinder(Watchdog* w) {
+        this->watchdog = w;
+    }
 
 
-     private:
+private:
     };
 }
 

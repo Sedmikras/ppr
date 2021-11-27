@@ -1,5 +1,4 @@
 #pragma once
-#pragma once
 
 #include <memory>
 #include <chrono>
@@ -14,6 +13,29 @@ namespace percentile_finder {
      * and if the value it provides is decreasing.
      */
     class Watchdog {
+    public:
+        virtual ~Watchdog();
+
+        /**
+         * Initialize a new watchdog.
+         *
+         * @param timeout The timeout indicating that the watched subject failed.
+         * @param timeout_divergence The function to call on value divergence.
+         * @param timeout_callback The function to call on timeout.
+         */
+        Watchdog(std::chrono::seconds timeout,
+                 std::function<void()> timeout_callback) noexcept;
+
+        /**
+         * Notify the watchdog to stop executing and join its thread.
+         */
+        void stop();
+
+        /**
+         * Set activity flag and notify the watchdog.
+         */
+        void notify();
+
     private:
         /**
          * The timeout to wait fro notification from the watched subject.
@@ -23,11 +45,6 @@ namespace percentile_finder {
         /**
          * The function to call on value divergence.
          */
-        std::function<void()> divergence_callback;
-
-        /**
-         * The function to call on timeout.
-         */
         std::function<void()> timeout_callback;
 
         /**
@@ -35,10 +52,11 @@ namespace percentile_finder {
          */
         bool stop_flag;
 
+
         /**
-        * Percentile finder started flag.
-        */
-        bool start_flag;
+         * Mutex for the condition variable and flags.
+         */
+        std::unique_ptr<std::mutex> cond_var_mutex;
 
         /**
          * The condition variable for flags.
@@ -48,7 +66,7 @@ namespace percentile_finder {
         /**
          * Mutex for the condition variable and flags.
          */
-        std::unique_ptr<std::mutex> mutex;
+        std::unique_ptr<std::mutex> flag_mutex;
 
         /**
          * The running watchdog thread.
@@ -64,40 +82,9 @@ namespace percentile_finder {
          * The new value.
          */
         std::uint64_t new_value;
-    public:
 
-        /**
-         * Initialize a new watchdog.
-         *
-         * @param timeout The timeout indicating that the watched subject failed.
-         * @param timeout_divergence The function to call on value divergence.
-         * @param timeout_callback The function to call on timeout.
-         */
-        Watchdog(std::chrono::seconds timeout,
-            std::function<void()> divergence_callback,
-            std::function<void()> timeout_callback) noexcept;
+        void initialize();
 
-        /**
-         * Move initialize a new watchdog.
-         *
-         * @param other The other watchdog.
-         */
-        Watchdog(Watchdog&& other) noexcept;
-
-
-        /**
-         * Run the watchdog in a separate thread
-         */
         void run();
-
-        /**
-         * Notify the watchdog to stop executing and join its thread.
-         */
-        void stop();
-
-        /**
-         * Set activity flag and notify the watchdog.
-         */
-        void notify();
     };
 }

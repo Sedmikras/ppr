@@ -1,6 +1,5 @@
 #include "resolver.h"
 #include "watchdog.h"
-#include "filereader.h"
 #include <map>
 #include <algorithm>
 #include <functional>
@@ -16,8 +15,7 @@ namespace percentile_finder {
 		//watchdog.stop();
 	}
 
-    PercentileFinder::PercentileFinder() noexcept {
-    }
+    PercentileFinder::PercentileFinder() noexcept = default;
 
     /*PercentileFinder::PercentileFinder(Watchdog watchdog) noexcept:
         watchdog(std::move(watchdog)) {}*/
@@ -33,7 +31,7 @@ namespace percentile_finder {
         reset_filereader(file);
 
         file.seekg(0, std::ios::end);
-        uint64_t filesize = file.tellg();
+        size_t filesize = file.tellg();
         file.seekg(std::ios::beg);
 
         std::vector<double> fileData((uint64_t)(ceil(filesize / 8)));

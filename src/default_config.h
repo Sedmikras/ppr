@@ -3,13 +3,17 @@
 #include <chrono>
 #include <string>
 namespace percentile_finder {
+    const unsigned int MAX_LIVE_TOKENS = 4;
 	const std::uint64_t MAX_BUFFER_SIZE = (1 << 27);
 	const std::uint64_t MAX_VECTOR_SIZE = MAX_BUFFER_SIZE / 8;
-	const std::uint64_t TEST_MAX_VECTOR_SIZE = MAX_BUFFER_SIZE;
-	const std::uint8_t PHASE_ZERO_BITS = 13;
-	const std::uint8_t PHASE_ONE_BITS = 23;
-	const std::uint8_t PHASE_TWO_BITS = 28;
-	const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(3);
+    const std::uint64_t MAX_VECTOR_SIZE_PARALLEL = MAX_VECTOR_SIZE / 16;
+	const std::uint8_t PHASE_ZERO_BITS = 20;
+	const std::uint8_t PHASE_ONE_BITS = 21;
+	const std::uint8_t PHASE_TWO_BITS = 23;
+    const std::uint8_t PHASE_ZERO_SHIFT = 64-PHASE_ZERO_BITS;
+    const std::uint8_t PHASE_FIRST_SHIFT = PHASE_ZERO_SHIFT - PHASE_ONE_BITS;
+    const std::uint8_t PHASE_SECOND_SHIFT = PHASE_FIRST_SHIFT - PHASE_TWO_BITS;
+	const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(10);
 	const uint32_t FIRST_INDEX = (1 << (PHASE_ZERO_BITS-1));
 	const uint32_t MASK_ZERO = FIRST_INDEX - 1;
 	const uint32_t MASK_ONE = (1 << PHASE_ONE_BITS) -1;
@@ -48,6 +52,21 @@ namespace percentile_finder {
     struct Position {
         uint64_t first;
         uint64_t last;
+    };
+
+    class PositionsMap {
+        public:
+
+        void position_update_safe(double value, int i, size_t first_pos);
+        Position get(double key);
+
+        virtual ~PositionsMap() {
+            positions.clear();
+        }
+
+    private:
+        std::mutex mutex;
+        std::unordered_map<double, Position> positions;
     };
 
     struct ResolverResult {

@@ -5,15 +5,13 @@
 #include "default_config.h"
 #include <tbb/flow_graph.h>
 #include <map>
+#include<mutex>
 
 
 namespace percentile_finder {
-    const unsigned int MAX_LIVE_TOKENS = 4;
 
     struct ParallelConfig {
         size_t filesize;
-        uint32_t iterations;
-        uint32_t i;
         NumberMasker* masker;
         size_t vector_size;
         uint64_t numbers_before;
@@ -55,51 +53,59 @@ namespace percentile_finder {
 
     class DataMaskerPoistions {
     public:
-        explicit DataMaskerPoistions(std::unordered_map<double, Position>* ppositions, ParallelConfig* pconfig, uint32_t pindex) {
-            this->positions = ppositions;
+        explicit DataMaskerPoistions(PositionsMap* map, ParallelConfig* pconfig, uint32_t pindex, Watchdog* w) {
+            this->positions = map;
             this->config = pconfig;
             this->index = pindex;
+            this->watchdog = w;
         }
 
         std::vector<double> operator()(std::pair<size_t, std::vector<double>> pair) const;
     private:
-        std::unordered_map<double, Position>* positions{};
+        PositionsMap* positions{};
         ParallelConfig* config;
         uint32_t index;
+        Watchdog* watchdog;
     };
 
     class DataMasker {
         public:
-        explicit DataMasker(ParallelConfig* pconfig) {
+        explicit DataMasker(ParallelConfig* pconfig, Watchdog* w) {
             this->config = pconfig;
+            this->watchdog = w;
         }
 
-        std::pair<uint64_t,std::vector<uint64_t>> operator()(const std::vector<double> numbers) const;
+        std::pair<uint64_t,std::vector<uint64_t>> operator()(std::vector<double> numbers) const;
         private:
         ParallelConfig* config;
+        Watchdog* watchdog;
     };
 
     class ChunkMerger {
         public:
-        explicit ChunkMerger(percentile_finder::Histogram* phistogram) {
+        explicit ChunkMerger(percentile_finder::Histogram* phistogram, Watchdog* w) {
             this->histogram = phistogram;
+            this->watchdog = w;
         }
 
         void operator()(std::pair<uint64_t, std::vector<uint64_t>> chunk) const;
 
         private:
         percentile_finder::Histogram *histogram;
+        Watchdog* watchdog;
     };
 
     class LastStand {
     public:
-        explicit LastStand(std::vector<double>* pfinal_result) {
+        explicit LastStand(std::vector<double>* pfinal_result, Watchdog* w) {
             this->final_result = pfinal_result;
+            this->watchdog = w;
         }
 
         void operator()(std::vector<double>) const;
     private:
         std::vector<double>* final_result;
+        Watchdog* watchdog;
     };
   
     /**
@@ -109,6 +115,7 @@ namespace percentile_finder {
     class PercentileFinderParallel : public PercentileFinder {
     public:
         PercentileFinderParallel() noexcept;
+        static std::mutex mutex;
 
         /**
        * Find a value from file on the given percentile.
@@ -124,10 +131,17 @@ namespace percentile_finder {
         */
         void reset_config() override;
 
+
+        explicit PercentileFinderParallel(Watchdog* w) {
+            this->watchdog = w;
+        }
+
     private:
         ParallelConfig config;
         std::vector<uint64_t> frequencies;
         NumberMasker masker;
         PartialResult get_value_positions_smp(std::ifstream &file, uint8_t percentile);
+
+        ResolverResult find_result_last_try(std::ifstream &file, uint8_t looked_up_percentile, PartialResult pr);
     };
 }

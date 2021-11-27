@@ -1,28 +1,20 @@
 #include "resolver_serial.h"
-#include "default_config.h"
 
 namespace percentile_finder {
 
-	uint32_t NumberMasker::return_index_from_double_first_stage(double number) const {
+	uint32_t NumberMasker::return_index_from_double_first_stage(double number) {
 		if (std::fpclassify(number) == 0) {
 			return FIRST_INDEX;
 		}
 		else if (std::fpclassify(number) == -1) {
 			int64_t num = *(int64_t*)&number;
 			if (number < 0) {
-				num = (num >> 43) & MASK_ZERO;
-				uint32_t result = FIRST_INDEX - (num);
-				if (result == FIRST_INDEX) {
-					result = result;
-				}
-				return result;
+				num = (~(num >> PHASE_ZERO_SHIFT)) & MASK_ZERO;
+                return num;
 			}
 			else {
-				num = (num >> 43) & MASK_ZERO;
+				num = (num >> PHASE_ZERO_SHIFT) & MASK_ZERO;
 				uint32_t result = FIRST_INDEX + (num);
-				if (result == FIRST_INDEX) {
-					result = result;
-				}
 				return result;
 			}
 		}
@@ -33,11 +25,14 @@ namespace percentile_finder {
 		if (std::fpclassify(number) == -1 || std::fpclassify(number) == 0) {
 			if (number >= low && number < high) {
 				int64_t num = *(int64_t*)&number;
-				if ((num >> 63) == 1) {
-					num = (~num >> 22) & MASK_ONE;
+				if (((uint64_t)num >> 63) == 1) {
+                    if(number==low)
+                        return 0;
+                    num = (~(num >> PHASE_TWO_BITS)) & MASK_ONE;
+                    return num;
 				}
 				else {
-					num = (num >> 22) & MASK_ONE;
+					num = (num >> PHASE_ONE_BITS) & MASK_ONE;
 				}
 
 				return num;
@@ -55,13 +50,7 @@ namespace percentile_finder {
 		if (std::fpclassify(number) == -1 || std::fpclassify(number) == 0) {
 			if (number >= low && number < high) {
 				int64_t num = *(int64_t*)&number;
-				if ((num >> 63) == 1) {
-					num = (~num) & MASK_TWO;
-				}
-				else {
-					num = (num) & MASK_TWO;
-				}
-
+                num = (num) & MASK_TWO;
 				return num;
 			}
 			else {
@@ -79,84 +68,73 @@ namespace percentile_finder {
 		case Stage::FIRST: return return_index_from_double_first_stage(number);
 		case Stage::SECOND: return return_index_from_double_second_stage(number);
 		case Stage::LAST: return return_index_from_double_last_stage(number);
-			break;
 		default: return UINT32_MAX;
 		}
 	}
 
 	Border NumberMasker::get_border_values_second_stage(uint32_t index) {
 		Border b;
-		uint32_t var_index = index - 1;
+		uint32_t var_index = index;
 		if (index < FIRST_INDEX) {
-			var_index = ~var_index & MASK_ONE;
+			var_index = ~var_index & MASK_ZERO;
 			var_index = var_index + FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << 43);
+			int64_t lowint = ((int64_t)var_index << PHASE_ZERO_SHIFT);
 			double var_low = *(double*)&lowint;
-			var_index = index - 2;
-			var_index = ~var_index & MASK_ONE;
-			var_index = var_index + FIRST_INDEX;
-			lowint = ((int64_t)var_index << 43);
+			lowint = ((int64_t)(var_index -1) << PHASE_ZERO_SHIFT);
 			double var_high = *(double*)&lowint;
-			b.low = var_high;
-			b.high = var_low;
+			b.low = var_low;
+			b.high = var_high;
 		}
 		else {
+
 			var_index = index - FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << 43);
+			int64_t lowint = ((int64_t)var_index << PHASE_ZERO_SHIFT);
 			double low = *(double*)&lowint;
 			b.low = low;
-			lowint = ((int64_t)var_index + 1 << 43);
+			lowint = ((int64_t)(var_index + 1) << PHASE_ZERO_SHIFT);
 			double high = *(double*)&lowint;
 			b.high = high;
 		}
 		return b;
 	}
 
-	Border NumberMasker::get_border_values_last_stage(uint32_t index) {
+	Border NumberMasker::get_border_values_last_stage(uint32_t index) const {
 		Border b;
-		uint32_t var_index = index - 1;
-		if (index < FIRST_INDEX) {
-			var_index = ~var_index & MASK_ONE;
-			var_index = var_index + FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << 43);
-			double var_low = *(double*)&lowint;
-			var_index = index - 2;
-			var_index = ~var_index & MASK_ONE;
-			var_index = var_index + FIRST_INDEX;
-			lowint = ((int64_t)var_index << 43);
-			double var_high = *(double*)&lowint;
-			b.low = var_high;
-			b.high = var_low;
-		}
-		else {
-			var_index = index - FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << 43);
-			double low = *(double*)&lowint;
-			b.low = low;
-			lowint = ((int64_t)var_index + 1 << 43);
-			double high = *(double*)&lowint;
-			b.high = high;
-		}
+        double source = this->low;
+        uint64_t all_bits_index = index;
+        int64_t highint = *(int64_t*)&source;
+        int64_t  complement = ((all_bits_index) << PHASE_TWO_BITS);
+        int64_t  complement2 = ((all_bits_index + 1) << PHASE_TWO_BITS);
+        if(this->low < 0) {
+            complement = (highint - complement);
+            complement2 = (highint - complement2);
+        } else {
+            complement = (highint + complement);
+            complement2 = (highint + complement2);
+        }
+        b.low = *(double*)&complement;
+        b.high = *(double*)&complement2;
 		return b;
 	}
 
 	Border NumberMasker::get_border_values(uint32_t index) {
 		switch (stage)
 		{
-			case Stage::FIRST: return get_border_values_second_stage(index); break;
-			case Stage::SECOND: return get_border_values_last_stage(index); break;
-			default: {Border b;
-				b.low = 0;
-				b.high = 1;
-				return b; } break;
-		}
+			case Stage::FIRST: return get_border_values_second_stage(index);
+			case Stage::SECOND: return get_border_values_last_stage(index);
+            case Stage::ZERO:
+                break;
+            case Stage::LAST:
+                break;
+        }
 		
 	}
 
 	void NumberMasker::increment_stage(uint32_t index) {
-		if (stage == Stage::SECOND) {
-			index = index;
-		}
+        if(stage == Stage::ZERO) {
+            stage = Stage::FIRST;
+            return;
+        }
 		Border b = get_border_values(index);
 		this->low = b.low;
 		this->high = b.high;
@@ -181,7 +159,7 @@ namespace percentile_finder {
 		stage = Stage::FIRST;
     }
 
-	uint32_t NumberMasker::get_masked_vector_size()
+	uint32_t NumberMasker::get_masked_vector_size() const
 	{
 		if (stage == Stage::FIRST) {
 			return 1 << PHASE_ZERO_BITS;
