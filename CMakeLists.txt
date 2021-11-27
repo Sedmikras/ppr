@@ -26,4 +26,4 @@ add_executable(percentile_finder
         src/resolver_serial.cpp
         src/resolver_serial.h
         src/watchdog.cpp
-        src/watchdog.h src/open_cl_default_header.h)
+        src/watchdog.h src/open_cl_default_header.h src/resolver_opencl.h src/resolver_opencl.cpp)

@@ -109,7 +109,6 @@ namespace percentile_finder {
          *
          * @param watchdog The watchdog.
          */
-        //PercentileFinderSerial(Watchdog watchdog) noexcept;
 
         /**
        * Find a value from file on the given percentile.

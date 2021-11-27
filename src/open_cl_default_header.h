@@ -6,3 +6,18 @@
 #pragma comment(lib, "OpenCL.lib")
 
 #include <CL/cl.h>
+#include "CL/cl2.hpp"
+
+namespace percentile_finder {
+    class OpenCLUtils {
+    public:
+        std::vector<cl::Device> get_cl_devices();
+        void list_available_device();
+        bool device_exists(std::string name);
+
+    };
+
+
+
+
+}
