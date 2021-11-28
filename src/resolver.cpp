@@ -26,38 +26,39 @@ namespace percentile_finder {
         size_t filesize = file.tellg();
         file.seekg(std::ios::beg);
         size_t iterations = (uint32_t)ceil((double)filesize / MAX_BUFFER_SIZE);
-        std::vector<double> fileData(MAX_BUFFER_SIZE);
-        std::vector<double> realData(0);
+        std::vector<double> file_data(MAX_BUFFER_SIZE);
+        std::vector<double> result_data_vector(0);
         uint64_t to_read = 0;
-        for (auto i = 0; i < iterations; i++) {
+        double value = INFINITY;
+        for (uint64_t i = 0; i < iterations; i++) {
             to_read = (((i + 1) * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
-            file.read((char *) &fileData[0], to_read);
+            file.read((char *) &file_data[0], to_read);
             uint32_t size = (uint32_t)(to_read / 8);
 
-            for (int j = 0; j < size; j++) {
-                if (std::fpclassify(fileData[j]) == FP_ZERO || std::fpclassify(fileData[j]) == FP_NORMAL) {
-                    realData.push_back(fileData[j]);
+            for (uint64_t j = 0; j < size; j++) {
+                value = file_data[j];
+                if (std::fpclassify(value) == FP_ZERO || std::fpclassify(value) == FP_NORMAL) {
+                    result_data_vector.push_back(value);
                 }
             }
         }
 
-        std::sort(std::execution::par_unseq, realData.begin(), realData.end());
+        std::sort(std::execution::par_unseq, result_data_vector.begin(), result_data_vector.end());
 
 
         double last_percentile = 0;
         uint64_t index = 0;
-        for (uint64_t i = 0; i < realData.size(); i++) {
-            double percentile = (((i + 1) / (double)realData.size()) * 100);
+        for (uint64_t i = 0; i < result_data_vector.size(); i++) {
+            double percentile = (((i + 1) / (double)result_data_vector.size()) * 100);
             if (percentile >= looked_up_percentile && last_percentile < looked_up_percentile) {
                 index = i;
                 break;
             }
             last_percentile = percentile;
         }
-        double number = realData[index];
-        ResolverResult r{ r.result = realData[index], Position{NULL,NULL}};
-        realData.clear();
-        fileData.clear();
+        ResolverResult r{ r.result = result_data_vector[index], Position{NULL,NULL}};
+        result_data_vector.clear();
+        file_data.clear();
         return r;
 	}
 
@@ -72,14 +73,14 @@ namespace percentile_finder {
         std::vector<double_t> fileData(max_readable_vector_size);
         std::pair<double, Position> positions;
         uint64_t to_read = 0;
-        double result = NAN;
-        for (int i = 0; i < iterations; i++) {
+        double result = INFINITY;
+        for (uint64_t i = 0; i < iterations; i++) {
             watchdog->notify();
             to_read = (((i + 1) * MAX_BUFFER_SIZE) > config->filesize) ? (config->filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
             file.read((char*)&fileData[0], to_read);
             uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
 
-            for (int j = 0; j < size; j++) {
+            for (uint64_t j = 0; j < size; j++) {
                 uint32_t index = masker->return_index_from_double(fileData[j]);
                 if (index == pr.bucket_index) {
                     result = fileData[j];

@@ -2,6 +2,9 @@
 #include <cstdint>
 #include <chrono>
 #include <string>
+#include <mutex>
+#include <unordered_map>
+
 namespace percentile_finder {
     // ------------------------- CONSTANTS ----------------------------------------------------------------------
 

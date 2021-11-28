@@ -71,13 +71,13 @@ ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t 
     std::vector<double> real_data;
     std::map<double, Position> positions;
     uint64_t to_read = 0;
-    for (int i = 0; i < config.iterations; i++) {
+    for (uint64_t i = 0; i < config.iterations; i++) {
         watchdog->notify();
         to_read = ((i + 1 * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE)) : MAX_BUFFER_SIZE;
         file.read((char*)&fileData[0], to_read);
         uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
 
-        for (int j = 0; j < size; j++) {
+        for (uint64_t j = 0; j < size; j++) {
             double number = fileData[j];
             uint32_t index = masker.return_index_from_double(number);
             if (index == pr.bucket_index) {
@@ -97,7 +97,7 @@ ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t 
     std::sort(real_data.begin(), real_data.end());
     uint32_t index = get_index_from_sorted_vector(real_data, &config, watchdog);
     if(index == UINT32_MAX) {
-        return ResolverResult { NAN, Position{NULL, NULL}};
+        return ResolverResult { INFINITY , Position{NULL, NULL}};
     } else {
         return ResolverResult { real_data[index], positions.at(real_data[index])};
     }
@@ -109,15 +109,14 @@ PartialResult PercentileFinderSerial::resolve(std::ifstream& file) {
     uint64_t numbers_counter = 0;
     std::vector<uint64_t> frequencies(masker.get_masked_vector_size());
     std::vector<double_t> fileData(max_readable_vector_size);
-    uint64_t last_increment = 0;
     uint64_t to_read = 0;
 
-    for (int i = 0; i < config.iterations; i++) {
+    for (uint64_t i = 0; i < config.iterations; i++) {
         to_read = (((i + 1) * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
         file.read((char*)&fileData[0], to_read);
         uint32_t size = (uint32_t)(to_read) / 8;
 
-        for (int j = 0; j < size; j++) {
+        for (uint64_t j = 0; j < size; j++) {
             uint32_t index = masker.return_index_from_double(fileData[j]);
             if (index == UINT32_MAX) {
                 continue;
@@ -130,8 +129,6 @@ PartialResult PercentileFinderSerial::resolve(std::ifstream& file) {
                 numbers_counter++;
             }
         }
-        auto value = numbers_counter - last_increment;
-        last_increment = numbers_counter;
     }
 
     if (config.total_number_count == 0) {

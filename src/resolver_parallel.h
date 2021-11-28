@@ -211,6 +211,6 @@ namespace percentile_finder {
          * @param percentile
          * @return
          */
-        PartialResult get_value_positions_smp(std::ifstream &file, uint8_t percentile);
+        PartialResult get_value_positions_smp(std::ifstream &file);
     };
 }

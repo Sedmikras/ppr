@@ -12,7 +12,7 @@ namespace percentile_finder {
         this->masker.stage = Stage::ZERO;
     }
 
-    PartialResult PercentileFinderParallel::get_value_positions_smp(std::ifstream &file, uint8_t percentile) {
+    PartialResult PercentileFinderParallel::get_value_positions_smp(std::ifstream &file) {
         parallelism_config.vector_size = masker.get_masked_vector_size();
         Histogram h{std::vector<uint64_t>(parallelism_config.vector_size), config.numbers_before};
         uint64_t numbers_count_t = 0;
@@ -30,10 +30,6 @@ namespace percentile_finder {
                         tbb::filter_mode::serial_out_of_order, ChunkMerger(&h, watchdog, &mutex)
                 )
         );
-        auto counter = 0;
-        for(auto value : h.buckets) {
-            counter += value;
-        }
         if(config.total_number_count == 0) {
             config.total_number_count = h.numbers_count;
         }
@@ -51,7 +47,6 @@ namespace percentile_finder {
         reset_filereader(file);
         file.seekg(0, std::ios::end);
         auto filesize = file.tellg();
-        auto iterations = (uint32_t) ceil((double) filesize / MAX_BUFFER_SIZE);
         config.filesize = filesize;
         config.numbers_before = 0;
         config.looked_up_percentile = percentile;
@@ -63,7 +58,7 @@ namespace percentile_finder {
         do {
             watchdog->notify();
             masker.increment_stage(pr.bucket_index);
-            pr = get_value_positions_smp(file, percentile);
+            pr = get_value_positions_smp(file);
             if(masker.stage == Stage::LAST) {
                 return find_result_last_try(file, &config, &masker, pr, watchdog);
             }
@@ -93,7 +88,7 @@ namespace percentile_finder {
         watchdog->notify();
         uint32_t index = get_index_from_sorted_vector(final_result, &config, watchdog);
         if(index == UINT32_MAX) {
-            return ResolverResult{NAN, Position{NULL, NULL}};
+            return ResolverResult{INFINITY, Position{NULL, NULL}};
         } else {
             return ResolverResult{final_result[index], positions.get(final_result[index])};
         }
@@ -142,26 +137,9 @@ namespace percentile_finder {
     }
 
     void ChunkMerger::operator()(std::pair<uint64_t, std::vector<uint64_t>> chunk) const {
-        auto chunk_numbers_count = chunk.first;
-        auto sychr = 0;
-        for(auto value : chunk.second)
-            sychr+= value;
-
-        bool error = (chunk_numbers_count == sychr);
-        auto before = 0;
-        auto after = 0;
-        std::unique_lock<std::mutex> lock (*mutex);
         histogram->numbers_count += chunk.first;
-        for(auto value : histogram->buckets)
-            before+= value;
         std::transform(chunk.second.begin(), chunk.second.end(), histogram->buckets.begin(), histogram->buckets.begin(),
                        std::plus<uint64_t>());
-        for(auto value : histogram->buckets)
-            after+= value;
-        bool error2 = (after == (before + sychr));
-        if (!error || !error2) {
-            sychr = sychr;
-        }
         watchdog->notify();
     }
 
@@ -211,12 +189,13 @@ namespace percentile_finder {
 
     void PositionsMap::position_insert_update_thread_safe(double key, int index, size_t first_pos) {
         std::unique_lock<std::mutex> lock(mutex);
+        uint64_t index_64 = index;
         if (positions.contains(key)) {
             Position *p = &(positions.at(key));
-            auto new_pos = first_pos + index * 8;
+            auto new_pos = first_pos + index_64 * 8;
             p->last = new_pos;
         } else {
-            Position p {p.first = first_pos + index * 8, p.last = first_pos + index * 8};
+            Position p {p.first = first_pos + index_64 * 8, p.last = first_pos + index_64 * 8};
             positions.insert({key, p});
         }
     }

@@ -5,23 +5,7 @@
 #include <iostream>
 #include <algorithm>
 #include <execution>
-
-void test_masker() {
-	percentile_finder::NumberMasker masker;
-	uint32_t index = 0;
-    std::vector<uint64_t> frequencies(2097152);
-	for (int64_t i = INT64_MIN; i <= INT64_MAX; i = i++) {
-		double value = *(double*)&i;
-		index = masker.return_index_from_double(value);
-		if (index != UINT32_MAX) {
-			frequencies[index]++;
-			percentile_finder::Border b = masker.get_border_values(index);
-			if ((value < b.low) || (value > b.high)) {
-				std::cout << index << value << i << "\n";
-			}
-		}	
-	}
-}
+#include <chrono>
 
 void test_resolver(int argc, char* argv[]) {
     percentile_finder::Watchdog w (std::chrono::seconds(15),
@@ -39,7 +23,7 @@ void test_resolver(int argc, char* argv[]) {
 
 	std::ifstream file(config.filename, std::ios::binary);
 
-	for (int i = 1; i <= 2; i++) {
+	for (uint8_t i = 1; i <= 2; i++) {
 		config.percentile = i;
 		try {
             auto start = std::chrono::system_clock::now();
