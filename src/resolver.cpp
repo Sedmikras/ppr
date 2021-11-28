@@ -1,5 +1,4 @@
 #include "resolver.h"
-#include "watchdog.h"
 #include <map>
 #include <algorithm>
 #include <functional>
@@ -10,16 +9,9 @@
 
 namespace percentile_finder {
 
-	PercentileFinder::~PercentileFinder() noexcept {
-		// force watchdog to stop and join its thread on destruction
-		//watchdog.stop();
-	}
+	PercentileFinder::~PercentileFinder() noexcept = default;
 
     PercentileFinder::PercentileFinder() noexcept = default;
-
-    /*PercentileFinder::PercentileFinder(Watchdog watchdog) noexcept:
-        watchdog(std::move(watchdog)) {}*/
-
 
 	/**
 		* Find a value from file on the given percentile.
@@ -33,24 +25,18 @@ namespace percentile_finder {
         file.seekg(0, std::ios::end);
         size_t filesize = file.tellg();
         file.seekg(std::ios::beg);
-
-        std::vector<double> fileData((uint64_t)(ceil(filesize / 8)));
+        size_t iterations = (uint32_t)ceil((double)filesize / MAX_BUFFER_SIZE);
+        std::vector<double> fileData(MAX_BUFFER_SIZE);
         std::vector<double> realData(0);
-        file.read((char*)&fileData[0], filesize);
-        std::map<double, Position> positions;
-        for (uint64_t i = 0; i < fileData.size(); i++)
-        {
-            if (std::fpclassify(fileData[i]) == FP_ZERO || std::fpclassify(fileData[i]) == FP_NORMAL) {
-                realData.push_back(fileData[i]);
-                try
-                {
-                    auto element = positions.at(fileData[i]);
-                    element.last = i * 8;
-                }
-                catch (const std::exception&)
-                {
-                    Position p{ p.first = i * 8, p.last = i * 8 };
-                    positions.insert({ fileData[i], p });
+        uint64_t to_read = 0;
+        for (auto i = 0; i < iterations; i++) {
+            to_read = (((i + 1) * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
+            file.read((char *) &fileData[0], to_read);
+            uint32_t size = (uint32_t)(to_read / 8);
+
+            for (int j = 0; j < size; j++) {
+                if (std::fpclassify(fileData[j]) == FP_ZERO || std::fpclassify(fileData[j]) == FP_NORMAL) {
+                    realData.push_back(fileData[j]);
                 }
             }
         }
@@ -69,11 +55,85 @@ namespace percentile_finder {
             last_percentile = percentile;
         }
         double number = realData[index];
-        ResolverResult r{ r.result = realData[index], positions.at(number) };
+        ResolverResult r{ r.result = realData[index], Position{NULL,NULL}};
+        realData.clear();
+        fileData.clear();
         return r;
 	}
 
     void PercentileFinder::reset_config()
     {
+    }
+
+    ResolverResult find_result_last_try(std::ifstream &file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog) {
+        reset_filereader(file);
+        auto iterations = ((config->filesize / 8) / MAX_VECTOR_SIZE);
+        uint64_t max_readable_vector_size = config->filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(config->filesize / 8.0) : MAX_VECTOR_SIZE;
+        std::vector<double_t> fileData(max_readable_vector_size);
+        std::pair<double, Position> positions;
+        uint64_t to_read = 0;
+        double result = NAN;
+        for (int i = 0; i < iterations; i++) {
+            watchdog->notify();
+            to_read = (((i + 1) * MAX_BUFFER_SIZE) > config->filesize) ? (config->filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
+            file.read((char*)&fileData[0], to_read);
+            uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
+
+            for (int j = 0; j < size; j++) {
+                uint32_t index = masker->return_index_from_double(fileData[j]);
+                if (index == pr.bucket_index) {
+                    result = fileData[j];
+                    Position* p = &positions.second;
+                    auto new_pos = i * max_readable_vector_size * 8 + j * 8;
+                    p->last = new_pos;
+                }
+            }
+        }
+        ResolverResult r{ r.result = result, positions.second };
+        return r;
+    }
+
+    PartialResult get_bucket_index(std::vector<uint64_t> buckets, PercentileFinderConfig* config, Watchdog* watchdog) {
+        PartialResult pr {};
+        uint64_t counter = config->numbers_before;
+        double last_percentile = ((double)counter / config->total_number_count) * 100;
+        uint32_t index = 0;
+        watchdog->notify();
+        for (int i = 0; i < buckets.size(); i++) {
+            if (buckets[i] == 0)
+                continue;
+            counter += buckets[i];
+            if(i % 1024 == 0) {
+                watchdog->notify();
+            }
+
+            double actual_percentile = ((double)(counter) / config->total_number_count) * 100;
+            if (actual_percentile >= config->looked_up_percentile && last_percentile < config->looked_up_percentile) {
+                index = i;
+                break;
+            }
+            last_percentile = actual_percentile;
+            config->numbers_before += buckets[i];
+        }
+        pr.bucket_index = index;
+        pr.numbers_in_index = (counter - config->numbers_before);
+        return pr;
+    }
+
+    uint32_t get_index_from_sorted_vector(const std::vector<double>& sorted_vector, PercentileFinderConfig* config, Watchdog* watchdog) {
+        uint32_t index = UINT32_MAX;
+        double actual_percentile;
+        double last_percentile = ((double)config->numbers_before / config->total_number_count) * 100;
+        watchdog->notify();
+        for(int i = 0; i < sorted_vector.size(); i++) {
+            actual_percentile = ((config->numbers_before + i + 1) / (double)config->total_number_count) * 100;
+            if (actual_percentile >= config->looked_up_percentile && last_percentile < config->looked_up_percentile) {
+                index = i;
+                break;
+            }
+            last_percentile = actual_percentile;
+        }
+        watchdog->notify();
+        return index;
     }
 }
