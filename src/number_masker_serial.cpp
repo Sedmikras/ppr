@@ -4,17 +4,17 @@ namespace percentile_finder {
 
 	uint32_t NumberMasker::return_index_from_double_first_stage(double number) {
 		if (std::fpclassify(number) == 0) {
-			return FIRST_INDEX;
+			return SPLITERATOR_FIRST_INDEX;
 		}
 		else if (std::fpclassify(number) == -1) {
 			int64_t num = *(int64_t*)&number;
 			if (number < 0) {
-				num = (~(num >> PHASE_ZERO_SHIFT)) & MASK_ZERO;
-                return num;
+				num = (~(num >> LEFT_SHIFT_COMPLEMENT_FIRST_STAGE)) & BIT_MASK_FIRST_STAGE;
+                return static_cast<uint32_t>(num);
 			}
 			else {
-				num = (num >> PHASE_ZERO_SHIFT) & MASK_ZERO;
-				uint32_t result = FIRST_INDEX + (num);
+				num = (num >> LEFT_SHIFT_COMPLEMENT_FIRST_STAGE) & BIT_MASK_FIRST_STAGE;
+				uint32_t result = static_cast<uint32_t>(SPLITERATOR_FIRST_INDEX + (num));
 				return result;
 			}
 		}
@@ -26,16 +26,16 @@ namespace percentile_finder {
 			if (number >= low && number < high) {
 				int64_t num = *(int64_t*)&number;
 				if (((uint64_t)num >> 63) == 1) {
-                    if(number==low)
-                        return 0;
-                    num = (~(num >> PHASE_TWO_BITS)) & MASK_ONE;
-                    return num;
+					if (number == low)
+						return 0;
+					num = (~(num >> LEFT_SHIFT_COMPLEMENT_SECOND_STAGE)) & BIT_MASK_SECOND_STAGE;
+					return static_cast<uint32_t>(num);
 				}
 				else {
-					num = (num >> PHASE_ONE_BITS) & MASK_ONE;
+					num = (num >> LEFT_SHIFT_COMPLEMENT_SECOND_STAGE) & BIT_MASK_SECOND_STAGE;
 				}
 
-				return num;
+				return static_cast<uint32_t>(num);
 			}
 			else {
 				return UINT32_MAX;
@@ -50,8 +50,8 @@ namespace percentile_finder {
 		if (std::fpclassify(number) == -1 || std::fpclassify(number) == 0) {
 			if (number >= low && number < high) {
 				int64_t num = *(int64_t*)&number;
-                num = (num) & MASK_TWO;
-				return num;
+				num = (num)&BIT_MASK_LAST_STAGE;
+				return static_cast<uint32_t>(num);
 			}
 			else {
 				return UINT32_MAX;
@@ -73,25 +73,25 @@ namespace percentile_finder {
 	}
 
 	Border NumberMasker::get_border_values_second_stage(uint32_t index) {
-		Border b;
-		uint32_t var_index = index;
-		if (index < FIRST_INDEX) {
-			var_index = ~var_index & MASK_ZERO;
-			var_index = var_index + FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << PHASE_ZERO_SHIFT);
+		Border b {-INFINITY, INFINITY };
+		int64_t var_index = index;
+		if (index < SPLITERATOR_FIRST_INDEX) {
+			var_index = ~var_index & BIT_MASK_FIRST_STAGE;
+			var_index = var_index + SPLITERATOR_FIRST_INDEX;
+			int64_t lowint = var_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
 			double var_low = *(double*)&lowint;
-			lowint = ((int64_t)(var_index -1) << PHASE_ZERO_SHIFT);
+			lowint = (var_index -1) << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
 			double var_high = *(double*)&lowint;
 			b.low = var_low;
 			b.high = var_high;
 		}
 		else {
 
-			var_index = index - FIRST_INDEX;
-			int64_t lowint = ((int64_t)var_index << PHASE_ZERO_SHIFT);
+			var_index = index - SPLITERATOR_FIRST_INDEX;
+			int64_t lowint = var_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
 			double low = *(double*)&lowint;
 			b.low = low;
-			lowint = ((int64_t)(var_index + 1) << PHASE_ZERO_SHIFT);
+			lowint = (var_index + 1) << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
 			double high = *(double*)&lowint;
 			b.high = high;
 		}
@@ -99,18 +99,25 @@ namespace percentile_finder {
 	}
 
 	Border NumberMasker::get_border_values_last_stage(uint32_t index) const {
-		Border b;
-        double source = this->low;
-        uint64_t all_bits_index = index;
-        int64_t highint = *(int64_t*)&source;
-        int64_t  complement = ((all_bits_index) << PHASE_TWO_BITS);
-        int64_t  complement2 = ((all_bits_index + 1) << PHASE_TWO_BITS);
+		Border b {-INFINITY,INFINITY};
+        int64_t complement, complement2;
+
         if(this->low < 0) {
+            double source = this->low;
+            uint64_t all_bits_index = index;
+            int64_t highint = *(int64_t*)&source;
+            complement = ((all_bits_index) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
+            complement2 = ((all_bits_index + 1) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
             complement = (highint - complement);
             complement2 = (highint - complement2);
         } else {
-            complement = (highint + complement);
-            complement2 = (highint + complement2);
+            double source = this->high;
+            uint64_t all_bits_index = index;
+            int64_t highint = *(int64_t*)&source;
+            complement2 = ((all_bits_index) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
+            complement = ((all_bits_index + 1) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
+            complement = (highint - complement);
+            complement2 = (highint - complement2);
         }
         b.low = *(double*)&complement;
         b.high = *(double*)&complement2;
@@ -162,13 +169,13 @@ namespace percentile_finder {
 	uint32_t NumberMasker::get_masked_vector_size() const
 	{
 		if (stage == Stage::FIRST) {
-			return 1 << PHASE_ZERO_BITS;
+			return 1 << BIT_SHIFT_FIRST_STAGE;
 		}
 		else if (stage == Stage::SECOND) {
-			return 1 << PHASE_ONE_BITS;
+			return 1 << BIT_SHIFT_SECOND_STAGE;
 		}
 		else if (stage == Stage::LAST) {
-			return 1 << PHASE_TWO_BITS;
+			return 1 << BIT_SHIFT_LAST_STAGE;
 		}
 		else return NULL;
 	}

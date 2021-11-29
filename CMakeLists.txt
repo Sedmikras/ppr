@@ -5,6 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(DCMAKE_GENERATOR_PLATFORM x64)
 
+set(CMAKE_CXX_FLAGS_DEBUG )
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 include_directories(src)
 
 set (DCMAKE_TOOLCHAIN_FILE C:/Soft/vcpkg/scripts/buildsystems/vcpkg.cmake)
@@ -17,7 +20,7 @@ link_directories("C:/Soft/vcpkg/packages/opencl_x64-windows/lib")
 add_executable(percentile_finder
         src/percentile_finder.cpp
         src/default_config.h
-        src/file_reader.cpp
+        src/utils.cpp
         src/number_masker_serial.cpp
         src/resolver.cpp
         src/resolver.h
@@ -26,4 +29,7 @@ add_executable(percentile_finder
         src/resolver_serial.cpp
         src/resolver_serial.h
         src/watchdog.cpp
-        src/watchdog.h src/open_cl_default_header.h src/resolver_opencl.h src/resolver_opencl.cpp)
+        src/bit_masker.h
+        src/open_cl_default_header.h
+        src/resolver_opencl.h
+        src/resolver_opencl.cpp)

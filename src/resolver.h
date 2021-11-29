@@ -6,8 +6,48 @@
 #include "filereader.h"
 #include "watchdog.h"
 #include "default_config.h"
+#include "bit_masker.h"
 
 namespace percentile_finder {
+    struct PercentileFinderConfig {
+        size_t filesize = 0;
+        uint64_t total_number_count = 0;
+        uint64_t numbers_before = 0;
+        uint32_t iterations = 0;
+        uint8_t looked_up_percentile = 0;
+    };
+
+    /**
+     * Last stage of algorithm - numbers are masked by last XX bits (default 23bits)
+     * reads data from file and sets position of a number in file (number is known)
+     * @param file to read numbers from
+     * @param config pointer to config of percentile finder - contains needed variables (@see{PercentileFinderConfig})
+     * @param masker pointer to number bit masker
+     * @param pr result of last part of algorithm (finding index of bucket which contains percentile number) @see{get_bucket_index or default_config.h}
+     * @param watchdog pointer to watchdog for notifications
+     * @return ResolverResult which contains found percentile number and its positions in file or value <NAN, Position {NULL,NULL}> if percentile was not found
+     */
+    ResolverResult find_result_last_try(std::ifstream &file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog);
+
+
+    /**
+     * Return index of a bucket where the percentile is
+     * @param buckets vector of bucket_histogram of numbers in buckets
+     * @param config pointer to config of percentile finder - contains needed variables (@see{PercentileFinderConfig})
+     * @param watchdog pointer to watchdog for notifications
+     * @return PartialResult - information about bucket. How many numbers are there in the bucket and index of bucket
+     */
+    PartialResult get_bucket_index(std::vector<uint64_t> buckets, PercentileFinderConfig* config, Watchdog* watchdog);
+
+    /**
+     * If there is enough memory, algorithm ends before last stage
+     * returns index of number in sorted vector which is looked up percentile
+     * @param sorted_vector sorted vector of numbers in bucket which contains looked up percentile
+     * @param config pointer to config of percentile finder - contains needed variables (@see{PercentileFinderConfig})
+     * @param watchdog pointer to watchdog for notifications
+     * @return index of number in sorted vector - this is result !
+     */
+    uint32_t get_index_from_sorted_vector(const std::vector<double>& sorted_vector, PercentileFinderConfig* config, Watchdog* watchdog);
     /**
      * Abstract class for percentile solvers.
      *
@@ -16,33 +56,26 @@ namespace percentile_finder {
      * in the file. Any double, that is not normal or zero is ignored.
      *
      * Basic algorithm:
-     * 1. Choose a random pivot number from file, lower bound = -inf, upper bound = inf
-     * 2. Read file and count number of elements in each interval:
-     *      - lt: lower < x < pivot
-     *      - eq: x == pivot
-     *      - gt: pivot < x < upper
-     * 3. On first pass compute the index of the value on the percentile based on total number of elements (lt + eq + gt).
-     * 4. Determine in which interval the value lies, and update pivot and bounds:
-     *      - lt => upper = pivot, pivot = random number from file that lies in lt
-     *      - eq => value on the percentile found = pivot --> go to 7.
-     *      - gt => lower = pivot, pivot = random number from file that lies in gt
-     * 5. Update the index of the value = index of the value int the selected interval.
-     * 6. Does the selected interval fits into the max allowed memory?
-     *      - NO -> repeat from 2.
-     *      - YES -> go to 7.
-     * 7. Load all values from the interval and select the nth smallest value - the value on the percentile --> go to 7.
-     * 8. Find value's first and last position in the file.
+     * 1) set bit mask for shifting values
+     * 2) mask numbers in file (read file) using bit masking creating histogram (frequence of numbers in buckets)
+     * 3) get index of bucket where percentile is located
+     * 4)
+     *      a) if all bits have been masked, continue          => 8
+     *      b) if numbers in bucket can be contained in memory => 5
+     *      c) if numbers in bucket can't contained in memory  => 1
+     * 5) read eligible numbers into vector and safe their positions
+     * 6) sort the vector and find percentile (number on percentile)
+     * 7) (END)return number and position
+     * 8) (END)read file for first and last position and return. It's known which number is the result cause all other have been masked
      *
-     * Every concrete implementation must implement logic for one file pass,
-     * loading and finding the nth smallest value from interval and searching value's positions in the file.
-     *
-     * The percentile solver has a watchdog, which monitors the progress of the computation by checking flag from the solver.
-     * Implementation of the solver must periodically notify the watchdog.
+     * Algorithm should end max after 4:
+     * 3 - iterations (stages) which masks in default by 20,21,23 bits
+     * 1 - iteration for finding positions in file of given percentile
      */
 class PercentileFinder {
 
     public:
-        Watchdog* watchdog;
+        Watchdog* watchdog{};
         /**
          * Find a value from file on the given percentile.
          *
