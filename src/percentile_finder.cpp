@@ -23,7 +23,7 @@ void test_resolver(int argc, char* argv[]) {
 
 	std::ifstream file(config.filename, std::ios::binary);
 
-	for (uint8_t i = 1; i <= 2; i++) {
+	for (uint8_t i = 1; i <= 100; i++) {
 		config.percentile = i;
 		try {
             auto start = std::chrono::system_clock::now();
@@ -60,14 +60,14 @@ void test_resolver(int argc, char* argv[]) {
 int main(int argc, char* argv[])
 {
 	//test_masker();
-	test_resolver(argc, argv);
-	/*percentile_finder::Config config = percentile_finder::parse_arguments(argc, argv);
+	//test_resolver(argc, argv);
+	percentile_finder::Config config = percentile_finder::parse_arguments(argc, argv);
 	try {
 		percentile_finder::solve(config);
 	}
 	catch (const std::exception& e) {
 		std::wcout << "Error occurred: " << e.what() << std::endl;
 		return 1;
-	}*/
+	}
 	return 0;
 }

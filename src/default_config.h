@@ -11,7 +11,7 @@ namespace percentile_finder {
     /**
      * MAX_LIVE_TOKENS - number of parallel pipelines in SMP
      */
-    const unsigned int MAX_LIVE_TOKENS = 8;
+    const unsigned int MAX_LIVE_TOKENS = 12;
     /**
      * MAX_BUFFER_SIZE set to 128MB cause there is limit of 250MB - for reading and checking if memory is OK
      */

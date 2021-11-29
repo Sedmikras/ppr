@@ -5,44 +5,6 @@
 
 using namespace percentile_finder;
 
-/*ResolverResult PercentileFinderSerial::find_result_last_try(std::ifstream& file, uint8_t looked_up_percentile, PartialResult pr) {
-    reset_filereader(file);
-    uint64_t max_readable_vector_size = filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(filesize / 8.0) : MAX_VECTOR_SIZE;
-    std::vector<double_t> fileData(max_readable_vector_size);
-    std::unordered_map<double, Position> positions;
-    double result = NAN;
-    for (int i = 0; i < iterations; i++) {
-        watchdog->notify();
-        uint64_t to_read = ((i + 1 * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE)) : MAX_BUFFER_SIZE;
-        file.read((char*)&fileData[0], to_read);
-        uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
-
-        for (int j = 0; j < size; j++) {
-            uint32_t index = masker.return_index_from_double(fileData[j]);
-            if (index == pr.bucket_index) {
-                result = fileData[j];
-                try
-                {
-                    Position* p = &(positions.at(fileData[j]));
-                    auto new_pos = i * max_readable_vector_size * 8 + j * 8;
-                    p->last = new_pos;
-                }
-                catch (const std::out_of_range& oor)
-                {
-                    Position p{ p.first = i * max_readable_vector_size * 8 + j * 8, p.last = i * max_readable_vector_size * 8 + j * 8};
-                    positions.insert({ fileData[j], p });
-                }
-            }
-        }
-    }
-    if(result == NAN && positions.empty()) {
-        std::wcout << "APP IS DIVERGING FROM RESULT";
-        std::exit((int)ERRORS::INVALID_PERCENTILE);
-    }
-    ResolverResult r{ r.result = result, positions.at(result) };
-    return r;
-}*/
-
 ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t looked_up_percentile) {
     watchdog->notify();
     PartialResult pr {};
