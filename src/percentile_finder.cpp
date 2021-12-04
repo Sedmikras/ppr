@@ -3,11 +3,13 @@
 #include "resolver_parallel.h"
 #include "resolver_opencl.h"
 #include "open_cl_default_header.h"
+#include "default_config.h"
 #include <string>
 #include <iostream>
 #include <algorithm>
 #include <execution>
 #include <chrono>
+
 
 
 
@@ -75,10 +77,10 @@ void test_resolver(int argc, char* argv[]) {
 int main(int argc, char* argv[])
 {
 	//test_masker();
-	test_resolver(argc, argv);
+	//test_resolver(argc, argv);
 	percentile_finder::Config config = percentile_finder::parse_arguments(argc, argv);
 	try {
-		//percentile_finder::solve(config);
+		percentile_finder::solve(config);
 	}
 	catch (const std::exception& e) {
 		std::wcout << "Error occurred: " << e.what() << std::endl;

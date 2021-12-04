@@ -205,4 +205,6 @@ namespace percentile_finder {
     bool file_exists(const std::string &file_path);
 
     Config parse_arguments(int argc, char *argv[]);
+
+    void solve(Config config);
 }

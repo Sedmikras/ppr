@@ -86,5 +86,6 @@ namespace percentile_finder {
         void list_available_device();
         bool device_exists(std::string name);
 
+        cl::Device get_device_by_name(std::string device_name);
     };
 }

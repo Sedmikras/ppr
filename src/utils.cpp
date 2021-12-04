@@ -1,7 +1,12 @@
 #include "filereader.h"
 #include "open_cl_default_header.h"
 #include "default_config.h"
+#include "watchdog.h"
+#include "resolver.h"
 #include <iostream>
+#include "resolver_opencl.h"
+#include "resolver_serial.h"
+#include "resolver_parallel.h"
 
 namespace percentile_finder {
     std::vector<cl::Device> percentile_finder::OpenCLUtils::get_cl_devices() {
@@ -20,6 +25,15 @@ namespace percentile_finder {
             }
         }
         return devices_available;
+    }
+
+    cl::Device percentile_finder::OpenCLUtils::get_device_by_name(std::string device_name) {
+        std::vector<cl::Device> devices = get_cl_devices();
+        for(auto const device : devices) {
+            if (device.getInfo<CL_DEVICE_NAME>() == device_name) {
+                return device;
+            }
+        }
     }
 
     void percentile_finder::OpenCLUtils::list_available_device() {
@@ -129,5 +143,56 @@ namespace percentile_finder {
             config.device_name = argv[3];
         }
         return config;
+    }
+
+    void solve(Config config) {
+        percentile_finder::Watchdog watchdog (std::chrono::seconds(15),
+           []() {
+               end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
+           }
+        );
+
+        OpenCLUtils utils2;
+        utils2.list_available_device();
+        // setup percentile finder
+        std::unique_ptr<percentile_finder::PercentileFinder> finder;
+        switch (config.solver_type)
+        {
+            case FinderType::Serial: {
+                finder = std::make_unique<percentile_finder::PercentileFinderSerial>(&watchdog); break;
+            }
+            case FinderType::SMP: {
+                finder = std::make_unique<percentile_finder::PercentileFinderParallel>(&watchdog); break;
+            }
+            case FinderType::OpenCL: {
+                OpenCLUtils utils;
+                if(utils.device_exists(config.device_name)) {
+                    cl::Device device = utils.get_device_by_name(config.device_name);
+                    finder = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&watchdog, device); break;
+                }
+            }
+            case FinderType::UNLIMITED_RAM_TESTER: {
+                finder = std::make_unique<percentile_finder::PercentileFinder>();
+            } break;
+        }
+        std::ifstream file(config.filename, std::ios::binary);
+        auto start = std::chrono::system_clock::now();
+        auto result = finder->find_percentile(file, config.percentile);
+        auto end = std::chrono::system_clock::now();
+        if (result.result != NAN) {
+            std::wcout << std::dec << result.result << std::dec
+                       << " " <<
+                       result.position.first
+                       << " " <<
+                       result.position.last
+                       << std::endl;
+        }
+        else {
+            std::wcout << result.result << std::endl;
+        }
+        file.close();
+        auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
+        std::wcout << "duration:"<< ms_int << "\n";
+        watchdog.stop();
     }
 }
