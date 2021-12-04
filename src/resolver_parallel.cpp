@@ -3,7 +3,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <tbb/parallel_pipeline.h>
 #include <execution>
 
 namespace percentile_finder {
@@ -96,8 +95,6 @@ namespace percentile_finder {
 
     void PercentileFinderParallel::reset_config() {
         bucket_histogram.clear();
-        this->masker.high = 0;
-        this->masker.low = 0;
         this->masker.stage = Stage::ZERO;
         this->masker.zero_phase_index = 0;
         this->config.filesize = 0;

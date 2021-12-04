@@ -31,5 +31,5 @@ add_executable(percentile_finder
         src/watchdog.cpp
         src/bit_masker.h
         src/open_cl_default_header.h
-        src/resolver_opencl.h
-        src/resolver_opencl.cpp)
+        src/resolver_opencl.cpp
+        src/resolver_opencl.h)

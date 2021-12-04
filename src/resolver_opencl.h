@@ -8,7 +8,7 @@ namespace  percentile_finder {
     public:
         PercentileFinderOpenCL(Watchdog* w, const cl::Device &device);
 
-        ~PercentileSolverOpenCL() noexcept override;
+        ~PercentileFinderOpenCL() noexcept override;
 
         /**
         * Find a value from file on the given percentile.
@@ -28,5 +28,13 @@ namespace  percentile_finder {
         cl::Context context;
         cl::CommandQueue queue;
         cl::Kernel kernel_bucket_index;
+        NumberMasker masker;
+        std::vector<double> data_buffer;
+        /**
+        * Config for algorithm
+        */
+        PercentileFinderConfig config {0,0,0,0,0};
+
+        PartialResult resolve(std::ifstream &file);
     };
 }

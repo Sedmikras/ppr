@@ -16,6 +16,10 @@ namespace percentile_finder {
      * MAX_BUFFER_SIZE set to 128MB cause there is limit of 250MB - for reading and checking if memory is OK
      */
 	const std::uint64_t MAX_BUFFER_SIZE = (1 << 27);
+
+    const std::uint64_t MAX_BUFFER_SIZE_OPENCL = MAX_BUFFER_SIZE / 2;
+
+    const std::uint64_t MAX_VECTOR_SIZE_OPENCL = MAX_BUFFER_SIZE_OPENCL / 8;
     /**
      * MAX_VECTOR_SIZE same as MAX_BUFFER_SIZE but for vectors of double (128MB)
      */

@@ -7,6 +7,12 @@
 #include <map>
 #include<mutex>
 
+#if __has_include("tbb/pipeline.h")
+#include <tbb/pipeline.h>
+#else
+#include <tbb/parallel_pipeline.h>
+#endif
+
 
 namespace percentile_finder {
 
@@ -203,6 +209,8 @@ namespace percentile_finder {
          */
         NumberMasker masker;
         std::mutex mutex;
+
+        std::vector<double> data_buffer;
 
         /**
          *

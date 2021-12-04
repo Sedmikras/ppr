@@ -2,6 +2,7 @@
 
 #include "resolver.h"
 #include "bit_masker.h"
+#include "default_config.h"
 
 namespace percentile_finder {
 
@@ -19,6 +20,10 @@ namespace percentile_finder {
          * @param watchdog The watchdog.
          */
 
+        PercentileFinderSerial(Watchdog* w) noexcept;
+
+        ~PercentileFinderSerial() override;
+
         /**
        * Find a value from file on the given percentile.
        *
@@ -33,14 +38,11 @@ namespace percentile_finder {
         */
         void reset_config() override;
 
-        explicit PercentileFinderSerial(Watchdog* w) {
-            this->watchdog = w;
-        }
-
 
     private:
         PercentileFinderConfig config;
         NumberMasker masker;
+        std::vector<double> data_buffer;
         ResolverResult find_result(std::ifstream& file, uint8_t percentile);
         PartialResult resolve(std::ifstream& file);
     };

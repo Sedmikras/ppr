@@ -67,19 +67,17 @@ ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t 
 
 PartialResult PercentileFinderSerial::resolve(std::ifstream& file) {
     reset_filereader(file);
-    uint64_t max_readable_vector_size = config.filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(config.filesize / 8.0) : MAX_VECTOR_SIZE;
     uint64_t numbers_counter = 0;
     std::vector<uint64_t> frequencies(masker.get_masked_vector_size());
-    std::vector<double_t> fileData(max_readable_vector_size);
     uint64_t to_read = 0;
 
     for (uint64_t i = 0; i < config.iterations; i++) {
-        to_read = (((i + 1) * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
-        file.read((char*)&fileData[0], to_read);
+        to_read = (((i + 1) * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE) - to_read%8) : MAX_BUFFER_SIZE;
+        file.read((char*)&data_buffer[0], to_read);
         uint32_t size = (uint32_t)(to_read) / 8;
 
         for (uint64_t j = 0; j < size; j++) {
-            uint32_t index = masker.return_index_from_double(fileData[j]);
+            uint32_t index = masker.return_index_from_double(data_buffer[j]);
             if (index == UINT32_MAX) {
                 continue;
             }
@@ -108,8 +106,6 @@ ResolverResult PercentileFinderSerial::find_percentile(std::ifstream& file, uint
 void PercentileFinderSerial::reset_config()
 {
     this->masker.stage = Stage::ZERO;
-    this->masker.low = 0;
-    this->masker.high = 0;
     this->config.filesize = 0;
     this->config.iterations = 0;
     this->config.total_number_count = 0;
@@ -118,14 +114,28 @@ void PercentileFinderSerial::reset_config()
 }
 
 PercentileFinderSerial::PercentileFinderSerial() noexcept {
+    this->data_buffer = std::vector<double> (MAX_VECTOR_SIZE, .0);
     this->masker.stage = Stage::ZERO;
     this->config.filesize = 0;
     this->config.iterations = 0;
     this->config.total_number_count = 0;
     this->config.looked_up_percentile = 0;
     this->config.numbers_before = 0;
-    this->masker.low = 0;
-    this->masker.high = 0;
+}
+
+PercentileFinderSerial::PercentileFinderSerial(Watchdog *w) noexcept: PercentileFinder(w) {
+    this->watchdog = w;
+    this->data_buffer = std::vector<double> (MAX_VECTOR_SIZE, .0);
+    this->masker.stage = Stage::ZERO;
+    this->config.filesize = 0;
+    this->config.iterations = 0;
+    this->config.total_number_count = 0;
+    this->config.looked_up_percentile = 0;
+    this->config.numbers_before = 0;
+}
+
+PercentileFinderSerial::~PercentileFinderSerial() {
+    this->data_buffer.clear();
 }
 
 

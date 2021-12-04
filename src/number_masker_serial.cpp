@@ -1,75 +1,33 @@
 #include "resolver_serial.h"
+#include "bit_masker.h"
+
 
 namespace percentile_finder {
 
-	uint32_t NumberMasker::return_index_from_double_first_stage(double number) {
-		if (std::fpclassify(number) == 0) {
-			return SPLITERATOR_FIRST_INDEX;
-		}
-		else if (std::fpclassify(number) == -1) {
-			int64_t num = *(int64_t*)&number;
-			if (number < 0) {
-				num = (~(num >> LEFT_SHIFT_COMPLEMENT_FIRST_STAGE)) & BIT_MASK_FIRST_STAGE;
-                return static_cast<uint32_t>(num);
-			}
-			else {
-				num = (num >> LEFT_SHIFT_COMPLEMENT_FIRST_STAGE) & BIT_MASK_FIRST_STAGE;
-				uint32_t result = static_cast<uint32_t>(SPLITERATOR_FIRST_INDEX + (num));
-				return result;
-			}
-		}
-		return UINT32_MAX;
-	}
+    bool NumberMasker::is_number_valid(double number) const {
+        return (std::fpclassify(number) == -1 || std::fpclassify(number) == 0);
+    }
 
-	uint32_t NumberMasker::return_index_from_double_second_stage(double number) const {
-		if (std::fpclassify(number) == -1 || std::fpclassify(number) == 0) {
-			if (number >= low && number < high) {
-				int64_t num = *(int64_t*)&number;
-				if (((uint64_t)num >> 63) == 1) {
-					if (number == low)
-						return 0;
-					num = (~(num >> LEFT_SHIFT_COMPLEMENT_SECOND_STAGE)) & BIT_MASK_SECOND_STAGE;
-					return static_cast<uint32_t>(num);
-				}
-				else {
-					num = (num >> LEFT_SHIFT_COMPLEMENT_SECOND_STAGE) & BIT_MASK_SECOND_STAGE;
-				}
 
-				return static_cast<uint32_t>(num);
-			}
-			else {
-				return UINT32_MAX;
-			}
-		}
-		else {
-			return UINT32_MAX;
-		}
-	}
-
-	uint32_t NumberMasker::return_index_from_double_last_stage(double number) const {
-		if (std::fpclassify(number) == -1 || std::fpclassify(number) == 0) {
-			if (number >= low && number < high) {
-				int64_t num = *(int64_t*)&number;
-				num = (num)&BIT_MASK_LAST_STAGE;
-				return static_cast<uint32_t>(num);
-			}
-			else {
-				return UINT32_MAX;
-			}
-		}
-		else {
-			return UINT32_MAX;
-		}
-	}
+    bool NumberMasker::in_span(double number) const {
+        return (number > this->low && number < this->high);
+    }
 
 	uint32_t NumberMasker::return_index_from_double(double number) const {
-		switch (stage)
-		{
-		case Stage::FIRST: return return_index_from_double_first_stage(number);
-		case Stage::SECOND: return return_index_from_double_second_stage(number);
-		case Stage::LAST: return return_index_from_double_last_stage(number);
-		default: return UINT32_MAX;
-		}
+        int64_t num = *(int64_t*)&number;
+        if(is_number_valid(number) && in_span(number)) {
+            if (number < 0) {
+                num = (~(num >> bit_shift)) & mask;
+                return static_cast<uint32_t>(num);
+            }
+            else {
+                num = (num >> bit_shift) & mask;
+                uint32_t result = static_cast<uint32_t>(offset + (num));
+                return result;
+            }
+        } else {
+            return UINT32_MAX;
+        }
 	}
 
 	Border NumberMasker::get_border_values_second_stage(uint32_t index) {
@@ -140,6 +98,11 @@ namespace percentile_finder {
 	void NumberMasker::increment_stage(uint32_t index) {
         if(stage == Stage::ZERO) {
             stage = Stage::FIRST;
+            low = -INFINITY;
+            high = + INFINITY;
+            bit_shift = LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
+            mask = BIT_MASK_FIRST_STAGE;
+            offset = SPLITERATOR_FIRST_INDEX;
             return;
         }
 		Border b = get_border_values(index);
@@ -179,5 +142,6 @@ namespace percentile_finder {
 		}
 		else return NULL;
 	}
+
 }
 
