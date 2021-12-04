@@ -152,9 +152,6 @@ namespace percentile_finder {
            }
         );
 
-        OpenCLUtils utils2;
-        utils2.list_available_device();
-        // setup percentile finder
         std::unique_ptr<percentile_finder::PercentileFinder> finder;
         switch (config.solver_type)
         {
@@ -179,17 +176,11 @@ namespace percentile_finder {
         auto start = std::chrono::system_clock::now();
         auto result = finder->find_percentile(file, config.percentile);
         auto end = std::chrono::system_clock::now();
-        if (result.result != NAN) {
-            std::wcout << std::dec << result.result << std::dec
-                       << " " <<
-                       result.position.first
-                       << " " <<
-                       result.position.last
-                       << std::endl;
-        }
-        else {
-            std::wcout << result.result << std::endl;
-        }
+        std::wcout
+                    << std::hex << result.result
+                    << std::dec << " " << result.position.first
+                    << std::dec << " " << result.position.last
+                    << std::endl;
         file.close();
         auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
         std::wcout << "duration:"<< ms_int << "\n";
