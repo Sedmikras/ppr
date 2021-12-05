@@ -12,7 +12,10 @@
 void test_resolver(int argc, char* argv[]) {
     percentile_finder::Watchdog w (std::chrono::seconds(15),
             []() {
-                end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
+                std::wcout << "Program is not responding. Wait for it ? Y/N";
+                int response = getchar();
+                if (response == 'N' || response == 'n')
+                    end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
             }
     );
 

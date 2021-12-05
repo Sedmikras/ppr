@@ -96,7 +96,7 @@ namespace percentile_finder {
         uint64_t max_readable_vector_size = config->filesize < (data_buffer->size() * sizeof(double)) ? (uint64_t)ceil(config->filesize / 8) : data_buffer->size();
         uint64_t to_read = 0;
         double number = INFINITY;
-        uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
+        uint32_t size = NULL;
         for (uint64_t i = 0; i < config->iterations; i++) {
             watchdog->notify();
             to_read = (((i + 1) * (MAX_VECTOR_SIZE * sizeof(double))) > config->filesize) ? (config->filesize - (i * (data_buffer->size() * sizeof(double))) - to_read % 8) : (data_buffer->size() * sizeof(double));
