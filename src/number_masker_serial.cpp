@@ -4,13 +4,33 @@
 
 namespace percentile_finder {
 
+	uint32_t NumberMasker::get_bit_shift() {
+		return bit_shift;
+	}
+
+	uint32_t NumberMasker::get_offset() {
+		return offset;
+	}
+
+	uint32_t NumberMasker::get_mask() {
+		return mask;
+	}
+
+	double NumberMasker::get_min() {
+		return low;
+	}
+
+	double NumberMasker::get_max() {
+		return high;
+	}
+
     bool NumberMasker::is_number_valid(double number) const {
         return (std::fpclassify(number) == -1 || std::fpclassify(number) == 0);
     }
 
 
     bool NumberMasker::in_span(double number) const {
-        return (number > this->low && number < this->high);
+        return (number >= this->low && number < this->high);
     }
 
 	uint32_t NumberMasker::return_index_from_double(double number) const {
@@ -58,7 +78,7 @@ namespace percentile_finder {
 
 	Border NumberMasker::get_border_values_last_stage(uint32_t index) const {
 		Border b {-INFINITY,INFINITY};
-        int64_t complement, complement2;
+        uint64_t complement, complement2;
 
         if(this->low < 0) {
             double source = this->low;
@@ -85,37 +105,41 @@ namespace percentile_finder {
 	Border NumberMasker::get_border_values(uint32_t index) {
 		switch (stage)
 		{
-			case Stage::FIRST: return get_border_values_second_stage(index);
-			case Stage::SECOND: return get_border_values_last_stage(index);
-            case Stage::ZERO:
-                break;
+			case Stage::ZERO: return Border{-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() }; break;
+			case Stage::FIRST: 
+				return get_border_values_second_stage(index); break;
+			case Stage::SECOND: 
+				return get_border_values_last_stage(index); break;
             case Stage::LAST:
-                break;
+				return Border{ -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() }; break;
         }
-		
+		return Border{ -std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity() };
 	}
 
 	void NumberMasker::increment_stage(uint32_t index) {
-        if(stage == Stage::ZERO) {
-            stage = Stage::FIRST;
-            low = -INFINITY;
-            high = + INFINITY;
-            bit_shift = LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
-            mask = BIT_MASK_FIRST_STAGE;
-            offset = SPLITERATOR_FIRST_INDEX;
-            return;
-        }
 		Border b = get_border_values(index);
 		this->low = b.low;
 		this->high = b.high;
-		zero_phase_index = index;
 		switch (stage)
 		{
+		case percentile_finder::Stage::ZERO:
+		{
+			stage = Stage::FIRST;
+			bit_shift = LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
+			mask = BIT_MASK_FIRST_STAGE;
+			offset = SPLITERATOR_FIRST_INDEX;
+			break;
+		}
 		case percentile_finder::Stage::FIRST:
+			zero_phase_index = index;
+			bit_shift = LEFT_SHIFT_COMPLEMENT_SECOND_STAGE;
+			mask = BIT_MASK_SECOND_STAGE;
+			offset = 0;
 			stage = Stage::SECOND;
 			break;
 		case percentile_finder::Stage::SECOND:
 			stage = Stage::LAST;
+			mask = BIT_MASK_LAST_STAGE;
 			break;
 		case percentile_finder::Stage::LAST:
 			stage = Stage::LAST;
@@ -126,7 +150,12 @@ namespace percentile_finder {
     }
 
     NumberMasker::NumberMasker() {
-		stage = Stage::FIRST;
+		stage = Stage::ZERO;
+		bit_shift = 0;
+		offset = 0;
+		mask = 0;
+		low = -std::numeric_limits<double>::infinity();
+		high = +std::numeric_limits<double>::infinity();
     }
 
 	uint32_t NumberMasker::get_masked_vector_size() const

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(DCMAKE_GENERATOR_PLATFORM x64)
 
 set(CMAKE_CXX_FLAGS_DEBUG )
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "/analyze /sdl /GS /guard:cf /Ox /GL /Gv /arch:AVX2 /EHsc")
 
 include_directories(src)
 

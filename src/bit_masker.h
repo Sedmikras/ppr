@@ -61,6 +61,34 @@ public:
     * @param index
     */
     Border get_border_values(uint32_t index);
+
+    /**
+     * Returns bit shift for actual algorithm stage (used specially on OpenCL)
+     * @return bit shift
+     */
+    uint32_t get_bit_shift();
+    /**
+    * Returns offset for actual algorithm stage (used specially on OpenCL)
+    * @return offset
+    */
+    uint32_t get_offset();
+    /**
+     * Returns bit mask for actual algorithm stage (used specially on OpenCL)
+     * @return bit mask
+     */
+    uint32_t get_mask();
+
+    /**
+     * returns lower limit of number masker
+     * @return lower border limit
+     */
+    double get_min();
+
+    /**
+     * returns high limit of number masker
+     * @return high border limit
+     */
+    double get_max();
     /**
     * constructor - sets stage = 0
     */
@@ -93,6 +121,11 @@ private:
     */
     double high = std::numeric_limits<double>::max();
 
+    /**
+     * Check if low >= number < high
+     * @param number double number
+     * @return if the number is between borders
+     */
     bool in_span(double number) const;
 
     [[nodiscard]] bool is_number_valid(double number) const;

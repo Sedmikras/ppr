@@ -42,7 +42,7 @@ namespace percentile_finder {
             std::this_thread::sleep_for(timeout);
             std::unique_lock<std::mutex> lock(*flag_mutex);
             if(new_value == old_value) {
-                std::wcout << "program stopped responding";
+                timeout_callback();
             } else {
                 new_value = 0;
                 old_value = 0;

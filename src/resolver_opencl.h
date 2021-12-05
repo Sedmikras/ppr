@@ -25,16 +25,36 @@ namespace  percentile_finder {
         void reset_config() override;
 
     private:
+        /**
+         * OpenCL context
+         */
         cl::Context context;
+        /**
+         * OpenCL command queue
+         */
         cl::CommandQueue queue;
-        cl::Kernel kernel_bucket_index;
+        /**
+         * OpenCL kernel
+         */
+        cl::Kernel kernel;
+        /**
+         * masker instance
+         */
         NumberMasker masker;
+        /**
+         * data buffer
+         */
         std::vector<double> data_buffer;
         /**
         * Config for algorithm
         */
         PercentileFinderConfig config {0,0,0,0,0};
 
+        /**
+         * resolve fills histogram
+         * @param file
+         * @return partial result with index of bucket and number of elements in bucket
+         */
         PartialResult resolve(std::ifstream &file);
     };
 }

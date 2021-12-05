@@ -2,13 +2,16 @@
 
 #include <cmath>
 #include <optional>
+#include <fstream>
 
-#include "filereader.h"
 #include "watchdog.h"
 #include "default_config.h"
 #include "bit_masker.h"
 
 namespace percentile_finder {
+    /**
+     * Struct with all info for algorithm
+     */
     struct PercentileFinderConfig {
         size_t filesize = 0;
         uint64_t total_number_count = 0;
@@ -18,6 +21,7 @@ namespace percentile_finder {
     };
 
     /**
+     * * USED ACROSS ALL VERSIONS
      * Last stage of algorithm - numbers are masked by last XX bits (default 23bits)
      * reads data from file and sets position of a number in file (number is known)
      * @param file to read numbers from
@@ -27,10 +31,11 @@ namespace percentile_finder {
      * @param watchdog pointer to watchdog for notifications
      * @return ResolverResult which contains found percentile number and its positions in file or value <NAN, Position {NULL,NULL}> if percentile was not found
      */
-    ResolverResult find_result_last_try(std::ifstream &file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog);
+    ResolverResult find_result_last_stage(std::ifstream &file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog, std::vector<double>* data_buffer);
 
 
     /**
+     * * USED ACROSS ALL VERSIONS
      * Return index of a bucket where the percentile is
      * @param buckets vector of bucket_histogram of numbers in buckets
      * @param config pointer to config of percentile finder - contains needed variables (@see{PercentileFinderConfig})
@@ -40,6 +45,7 @@ namespace percentile_finder {
     PartialResult get_bucket_index(std::vector<uint64_t> buckets, PercentileFinderConfig* config, Watchdog* watchdog);
 
     /**
+     * * USED ACROSS ALL VERSIONS
      * If there is enough memory, algorithm ends before last stage
      * returns index of number in sorted vector which is looked up percentile
      * @param sorted_vector sorted vector of numbers in bucket which contains looked up percentile
@@ -48,6 +54,21 @@ namespace percentile_finder {
      * @return index of number in sorted vector - this is result !
      */
     uint32_t get_index_from_sorted_vector(const std::vector<double>& sorted_vector, PercentileFinderConfig* config, Watchdog* watchdog);
+
+
+    /**
+     * goes through the file and find positions of file. When found, insert into map
+     * USED ACROSS ALL VERSIONS
+     * @param file ifstream
+     * @param config config reference
+     * @param masker number masker reference
+     * @param pr PartialResult
+     * @param watchdog watchdog reference for notyfing
+     * @param data_buffer data buffer reference
+     * @param results_buffer result "buffer" reference for storing numbers
+     * @param position_map reference to position map, where the positions are stored
+     */
+    void find_positions(std::ifstream& file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog, std::vector<double>* data_buffer, std::vector<double>* results_buffer, std::unordered_map<double, Position>* position_map);
     /**
      * Abstract class for percentile solvers.
      *
@@ -100,10 +121,13 @@ class PercentileFinder {
     */
     explicit PercentileFinder() noexcept;
 
+    /**
+     * Constructor of percentile finder with pointer to watchdog
+     * @param watchdog reference
+     */
     explicit PercentileFinder(Watchdog* w) {
         this->watchdog = w;
     }
-
 
 private:
     };

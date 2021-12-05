@@ -148,9 +148,9 @@ namespace percentile_finder {
     /**
      * Class for pipelining - finds numbers from bucket and returns them in one vector
      */
-    class LastStand {
+    class DataVectorMerger {
     public:
-        explicit LastStand(std::vector<double>* pfinal_result, Watchdog* w) {
+        explicit DataVectorMerger(std::vector<double>* pfinal_result, Watchdog* w) {
             this->final_result = pfinal_result;
             this->watchdog = w;
         }
@@ -208,8 +208,14 @@ namespace percentile_finder {
          * number masker instance for masking bits of numbers
          */
         NumberMasker masker;
+        /**
+         * mutex for
+         */
         std::mutex mutex;
 
+        /**
+         * data buffer instance
+         */
         std::vector<double> data_buffer;
 
         /**

@@ -40,10 +40,33 @@ namespace percentile_finder {
 
 
     private:
+        /**
+         * config
+         */
         PercentileFinderConfig config;
+        /**
+         * number masker instance
+         */
         NumberMasker masker;
+        /**
+         * data buffer
+         */
         std::vector<double> data_buffer;
+
+        /**
+        * Find a value from file on the given percentile.
+        *
+        * @param ifstream - opened file stream
+        * @param percentile The percentile.
+        * @return The result value or nullopt if the file doesn't contain any normal double.
+        */
         ResolverResult find_result(std::ifstream& file, uint8_t percentile);
+
+        /**
+         * resolve fills histogram
+         * @param file
+         * @return partial result with index of bucket and number of elements in bucket
+         */
         PartialResult resolve(std::ifstream& file);
     };
 }
