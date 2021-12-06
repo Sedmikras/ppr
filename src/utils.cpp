@@ -37,9 +37,10 @@ namespace percentile_finder {
     }
 
     void percentile_finder::list_available_device() {
+        std::wcout << "List of available devices: \n";
         std::vector<cl::Device> devices = get_cl_devices();
         for (auto &device: devices) {
-            std::cout << ", Device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+            std::cout << "* " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
         }
     }
 
@@ -48,8 +49,6 @@ namespace percentile_finder {
         for (auto &device: devices) {
             if (device.getInfo<CL_DEVICE_NAME>() == name) {
                 return true;
-            } else {
-                return false;
             }
         }
         return false;
@@ -172,10 +171,16 @@ namespace percentile_finder {
                 finder = std::make_unique<percentile_finder::PercentileFinderParallel>(&watchdog); break;
             }
             case FinderType::OpenCL: {
-                if(percentile_finder::device_exists(config.device_name)) {
+                if (percentile_finder::device_exists(config.device_name)) {
                     cl::Device device = percentile_finder::get_device_by_name(config.device_name);
                     finder = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&watchdog, device); break;
                 }
+                else {
+                    percentile_finder::list_available_device();
+                    percentile_finder::end_with_error_message(ERRORS::UNKNOWN_DEVICE_NAME);
+                    break;
+                }
+                
             }
             case FinderType::UNLIMITED_RAM_TESTER: {
                 finder = std::make_unique<percentile_finder::PercentileFinder>();

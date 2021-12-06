@@ -10,7 +10,7 @@
 #include <chrono>
 
 void test_resolver(int argc, char* argv[]) {
-    percentile_finder::Watchdog w (std::chrono::seconds(15),
+    percentile_finder::Watchdog w (percentile_finder::DEFAULT_TIMEOUT,
             []() {
                 std::wcout << "Program is not responding. Wait for it ? Y/N";
                 int response = getchar();

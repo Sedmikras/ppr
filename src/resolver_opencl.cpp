@@ -80,6 +80,7 @@ namespace percentile_finder {
 
         //read data by parts and send them to OpenCL device for processing (bit masking)
         for (uint64_t i = 0; i < config.iterations; i++) {
+            watchdog->notify();
             to_read = (((i + 1) * MAX_BUFFER_SIZE_OPENCL) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE_OPENCL)) : MAX_BUFFER_SIZE_OPENCL;
             to_read = to_read  - (to_read % 8);
             file.read((char*)&data_buffer[0], std::streamsize(to_read));
@@ -133,6 +134,7 @@ namespace percentile_finder {
 
         // sort vector and find index of percentile in it
         std::sort(std::execution::par_unseq, real_data.begin(), real_data.end());
+        watchdog->notify();
         uint32_t index = get_index_from_sorted_vector(real_data, &config, watchdog);
         if(index == UINT32_MAX) {
             return ResolverResult { INFINITY , Position{NULL, NULL}};
