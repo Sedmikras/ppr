@@ -84,7 +84,7 @@ namespace percentile_finder {
      *      a) if all bits have been masked, continue          => 8
      *      b) if numbers in bucket can be contained in memory => 5
      *      c) if numbers in bucket can't contained in memory  => 1
-     * 5) read eligible numbers into vector and safe their positions
+     * 5) read eligible numbers into vector and save their positions
      * 6) sort the vector and find percentile (number on percentile)
      * 7) (END)return number and position
      * 8) (END)read file for first and last position and return. It's known which number is the result cause all other have been masked

@@ -99,7 +99,7 @@ namespace percentile_finder {
         uint32_t size = NULL;
         for (uint64_t i = 0; i < config->iterations; i++) {
             watchdog->notify();
-            to_read = (((i + 1) * (MAX_VECTOR_SIZE * sizeof(double))) > config->filesize) ? (config->filesize - (i * (data_buffer->size() * sizeof(double))) - to_read % 8) : (data_buffer->size() * sizeof(double));
+            to_read = (((i + 1) * (data_buffer->size() * sizeof(double))) > config->filesize) ? (config->filesize - (i * (data_buffer->size() * sizeof(double))) - to_read % 8) : (data_buffer->size() * sizeof(double));
             size = (uint32_t)(to_read / 8);
             file.read((char*)data_buffer->data(), std::streampos(to_read));
 

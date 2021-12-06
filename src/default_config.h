@@ -60,11 +60,6 @@ namespace percentile_finder {
     const std::uint8_t LEFT_SHIFT_COMPLEMENT_SECOND_STAGE = LEFT_SHIFT_COMPLEMENT_FIRST_STAGE - BIT_SHIFT_SECOND_STAGE;
 
     /**
-     * default timeout for watchdog
-     */
-	const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(10);
-
-    /**
      * splits first interval into positive and negative numbers
      */
 	const uint32_t SPLITERATOR_FIRST_INDEX = (1 << (BIT_SHIFT_FIRST_STAGE - 1));
@@ -81,6 +76,8 @@ namespace percentile_finder {
      * bit mask used in number masking last stage
      */
 	const uint32_t BIT_MASK_LAST_STAGE = (1 << BIT_SHIFT_LAST_STAGE) - 1;
+
+    const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(7);
 
 	/**
 	 * The type of percentile solver.
