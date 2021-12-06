@@ -43,14 +43,6 @@ public:
     */
     uint32_t zero_phase_index = 0;
     /**
-    * lowest value for next iterations
-    */
-    double low = -std::numeric_limits<double>::max();
-    /**
-    * highest value for next iterations
-    */
-    double high = std::numeric_limits<double>::max();
-    /**
     * returns bucket_index from double value by masking it as int by bits
     * @param number double number
     */
@@ -63,12 +55,40 @@ public:
     /**
     * returns size of vector to use when masking numbers
     */
-    uint32_t get_masked_vector_size() const;
+    [[nodiscard]] uint32_t get_masked_vector_size() const;
     /**
     * returns border values for next stage of algorithm
     * @param index
     */
     Border get_border_values(uint32_t index);
+
+    /**
+     * Returns bit shift for actual algorithm stage (used specially on OpenCL)
+     * @return bit shift
+     */
+    uint32_t get_bit_shift();
+    /**
+    * Returns offset for actual algorithm stage (used specially on OpenCL)
+    * @return offset
+    */
+    uint32_t get_offset();
+    /**
+     * Returns bit mask for actual algorithm stage (used specially on OpenCL)
+     * @return bit mask
+     */
+    uint32_t get_mask();
+
+    /**
+     * returns lower limit of number masker
+     * @return lower border limit
+     */
+    double get_min();
+
+    /**
+     * returns high limit of number masker
+     * @return high border limit
+     */
+    double get_max();
     /**
     * constructor - sets stage = 0
     */
@@ -88,23 +108,26 @@ private:
      */
     Border get_border_values_last_stage(uint32_t index) const;
 
+    uint32_t bit_shift;
+    uint32_t offset;
+    uint32_t mask;
+
     /**
-     * Returns bucket_index from double from first stage - default is 20 (how many bits is defined in @see{@link default_config.h}
-     * @param number double number that will be masked
-     * @return uint32_t bucket_index of the number (bit mask)
-     */
-    [[nodiscard]] static uint32_t return_index_from_double_first_stage(double number) ;
+    * lowest value for next iterations
+    */
+    double low = -std::numeric_limits<double>::max();
     /**
-     * Returns bucket_index from double from second stage - default is 21(how many bits is defined in @see{@link default_config.h}
-     * @param number double number that will be masked
-     * @return uint32_t bucket_index of the number (bit mask)
-     */
-    [[nodiscard]] uint32_t return_index_from_double_second_stage(double number) const;
+    * highest value for next iterations
+    */
+    double high = std::numeric_limits<double>::max();
+
     /**
-     * Returns bucket_index from double from last stage - default is 23 (how many bits is defined in @see{@link default_config.h}
-     * @param number double number that will be masked
-     * @return uint32_t bucket_index of the number (bit mask)
+     * Check if low >= number < high
+     * @param number double number
+     * @return if the number is between borders
      */
-    [[nodiscard]] uint32_t return_index_from_double_last_stage(double number) const;
+    bool in_span(double number) const;
+
+    [[nodiscard]] bool is_number_valid(double number) const;
 };
 }

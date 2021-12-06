@@ -3,7 +3,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <tbb/parallel_pipeline.h>
 #include <execution>
 
 namespace percentile_finder {
@@ -13,6 +12,7 @@ namespace percentile_finder {
     }
 
     PartialResult PercentileFinderParallel::get_value_positions_smp(std::ifstream &file) {
+        reset_filereader(file);
         parallelism_config.vector_size = masker.get_masked_vector_size();
         Histogram h{std::vector<uint64_t>(parallelism_config.vector_size), config.numbers_before};
         uint64_t numbers_count_t = 0;
@@ -46,7 +46,7 @@ namespace percentile_finder {
         reset_config();
         reset_filereader(file);
         file.seekg(0, std::ios::end);
-        auto filesize = file.tellg();
+        auto filesize = static_cast<size_t>(file.tellg());
         config.filesize = filesize;
         config.numbers_before = 0;
         config.looked_up_percentile = percentile;
@@ -60,7 +60,7 @@ namespace percentile_finder {
             masker.increment_stage(pr.bucket_index);
             pr = get_value_positions_smp(file);
             if(masker.stage == Stage::LAST) {
-                return find_result_last_try(file, &config, &masker, pr, watchdog);
+                return find_result_last_stage(file, &config, &masker, pr, watchdog, &data_buffer);
             }
         } while (pr.numbers_in_index > MAX_VECTOR_SIZE && masker.stage != Stage::LAST);
         reset_filereader(file);
@@ -80,7 +80,7 @@ namespace percentile_finder {
                 )
                 &
                 tbb::make_filter<std::vector<double>, void>(
-                        tbb::filter_mode::serial_out_of_order, LastStand(&final_result, watchdog)
+                        tbb::filter_mode::serial_out_of_order, DataVectorMerger(&final_result, watchdog)
                 )
         );
         watchdog->notify();
@@ -96,8 +96,6 @@ namespace percentile_finder {
 
     void PercentileFinderParallel::reset_config() {
         bucket_histogram.clear();
-        this->masker.high = 0;
-        this->masker.low = 0;
         this->masker.stage = Stage::ZERO;
         this->masker.zero_phase_index = 0;
         this->config.filesize = 0;
@@ -108,13 +106,13 @@ namespace percentile_finder {
     }
 
     std::vector<double> DataMiner::operator()(tbb::flow_control &fc) const {
-        size_t actual_position = file->tellg();
+        size_t actual_position = static_cast<size_t>(file->tellg());
         size_t to_read = (config->filesize - actual_position > (MAX_VECTOR_SIZE_PARALLEL * 8)) ? MAX_VECTOR_SIZE_PARALLEL * 8 : (config->filesize - actual_position);
         std::vector<double> data_buffer(to_read / 8);
         if(to_read == 0) {
             fc.stop();
         } else {
-            file->read((char *) &data_buffer[0], to_read);
+            file->read((char *) &data_buffer[0], std::streampos(to_read));
         }
         return data_buffer;
     }
@@ -123,7 +121,7 @@ namespace percentile_finder {
         watchdog->notify();
         std::vector<uint64_t> frequencies(config->vector_size, 0);
         uint64_t numbers_count = 0;
-        for (int i = 0; i < numbers.size(); i++) {
+        for (auto i = 0; i < numbers.size(); i++) {
             uint32_t index = config->masker->return_index_from_double(numbers[i]);
             if (index == UINT32_MAX) {
                 continue;
@@ -165,7 +163,7 @@ namespace percentile_finder {
         watchdog->notify();
         std::vector<double> values;
         double value;
-        for (int i = 0; i < pair.second.size(); i++) {
+        for (auto i = 0; i < pair.second.size(); i++) {
             value = pair.second[i];
             if (config->masker->return_index_from_double(value) == index) {
                 values.push_back(pair.second[i]);
@@ -177,7 +175,7 @@ namespace percentile_finder {
         return values;
     }
 
-    void LastStand::operator()(std::vector<double> partial_result_vector) const {
+    void DataVectorMerger::operator()(std::vector<double> partial_result_vector) const {
         final_result->insert(
                 final_result->end(),
                 std::make_move_iterator(partial_result_vector.begin()),
@@ -187,7 +185,7 @@ namespace percentile_finder {
         return;
     }
 
-    void PositionsMap::position_insert_update_thread_safe(double key, int index, size_t first_pos) {
+    void PositionsMap::position_insert_update_thread_safe(double key, uint32_t index, size_t first_pos) {
         std::unique_lock<std::mutex> lock(mutex);
         uint64_t index_64 = index;
         if (positions.contains(key)) {

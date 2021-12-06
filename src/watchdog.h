@@ -83,8 +83,14 @@ namespace percentile_finder {
          */
         std::uint64_t new_value;
 
+        /**
+         * initialize watchdog - private
+         */
         void initialize();
 
+        /**
+         * private run function
+         */
         void run();
     };
 }

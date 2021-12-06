@@ -1,20 +1,24 @@
-#include "filereader.h"
 #include "open_cl_default_header.h"
 #include "default_config.h"
+#include "watchdog.h"
+#include "resolver.h"
 #include <iostream>
+#include "resolver_opencl.h"
+#include "resolver_serial.h"
+#include "resolver_parallel.h"
 
 namespace percentile_finder {
-    std::vector<cl::Device> percentile_finder::OpenCLUtils::get_cl_devices() {
+    std::vector<cl::Device> percentile_finder::get_cl_devices() {
         std::vector<cl::Device> devices;
         std::vector<cl::Platform> platforms; // get all platforms
         std::vector<cl::Device> devices_available;
-        int n = 0; // number of available devices
+        auto n = 0; // number of available devices
         cl::Platform::get(&platforms);
-        for (int i = 0; i < (int) platforms.size(); i++) {
+        for (auto i = 0; i < platforms.size(); i++) {
             devices_available.clear();
             platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &devices_available);
             if (devices_available.size() == 0) continue; // no device found in plattform i
-            for (int j = 0; j < (int) devices_available.size(); j++) {
+            for (auto j = 0; j < devices_available.size(); j++) {
                 n++;
                 devices.push_back(devices_available[j]);
             }
@@ -22,22 +26,32 @@ namespace percentile_finder {
         return devices_available;
     }
 
-    void percentile_finder::OpenCLUtils::list_available_device() {
+    cl::Device percentile_finder::get_device_by_name(std::string device_name) {
+        std::vector<cl::Device> devices = get_cl_devices();
+        for (auto const device : devices) {
+            if (device.getInfo<CL_DEVICE_NAME>() == device_name) {
+                return device;
+            }
+        }
+        return cl::Device{};
+    }
+
+    void percentile_finder::list_available_device() {
+        std::wcout << "List of available devices: \n";
         std::vector<cl::Device> devices = get_cl_devices();
         for (auto &device: devices) {
-            std::cout << ", Device: " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+            std::cout << "* " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
         }
     }
 
-    bool percentile_finder::OpenCLUtils::device_exists(std::string name) {
+    bool percentile_finder::device_exists(std::string name) {
         std::vector<cl::Device> devices = get_cl_devices();
         for (auto &device: devices) {
             if (device.getInfo<CL_DEVICE_NAME>() == name) {
                 return true;
-            } else {
-                return false;
             }
         }
+        return false;
     }
 
     void percentile_finder::reset_filereader(std::ifstream &file) {
@@ -94,14 +108,14 @@ namespace percentile_finder {
         }
     }
 
-    Config parse_arguments(int argc, char *argv[]) {
+    Config parse_arguments(int argc, char* argv[]) {
         Config config;
 
         std::string file_name;
         uint8_t percentile;
 
 
-        if (argc != 4) {
+        if (argc < 4 && argc > 5) {
             end_with_error_message(ERRORS::NOT_ENOUGH_ARGUMENTS);
         }
 
@@ -112,22 +126,78 @@ namespace percentile_finder {
         config.filename = file_name;
 
 
-        percentile = std::stoi(argv[2]);
+        percentile = static_cast<uint8_t>(std::stoi(argv[2]));
         if (percentile > 100 || percentile == 0) {
             end_with_error_message(ERRORS::INVALID_PERCENTILE);
-        } else {
+        }
+        else {
             config.percentile = percentile;
         }
 
         std::string exec_mode_string = argv[3];
         if (exec_mode_string == "single") {
             config.solver_type = FinderType::Serial;
-        } else if (exec_mode_string == "SMP") {
+        }
+        else if (exec_mode_string == "SMP") {
             config.solver_type = FinderType::SMP;
-        } else {
+        }
+        else {
             config.solver_type = FinderType::OpenCL;
             config.device_name = argv[3];
         }
+
+        if (argc == 5) {
+            std::string benchmark_string = argv[4];
+            if (benchmark_string == "benchmark" || benchmark_string == "-b")
+                config.benchmark = true;
+        }
         return config;
+    }
+
+    void solve(Config config) {
+        percentile_finder::Watchdog watchdog (std::chrono::seconds(15),
+           []() {
+               end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
+           }
+        );
+
+        std::unique_ptr<percentile_finder::PercentileFinder> finder;
+        switch (config.solver_type)
+        {
+            case FinderType::Serial: {
+                finder = std::make_unique<percentile_finder::PercentileFinderSerial>(&watchdog); break;
+            }
+            case FinderType::SMP: {
+                finder = std::make_unique<percentile_finder::PercentileFinderParallel>(&watchdog); break;
+            }
+            case FinderType::OpenCL: {
+                if (percentile_finder::device_exists(config.device_name)) {
+                    cl::Device device = percentile_finder::get_device_by_name(config.device_name);
+                    finder = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&watchdog, device); break;
+                }
+                else {
+                    percentile_finder::list_available_device();
+                    percentile_finder::end_with_error_message(ERRORS::UNKNOWN_DEVICE_NAME);
+                    break;
+                }
+                
+            }
+            case FinderType::UNLIMITED_RAM_TESTER: {
+                finder = std::make_unique<percentile_finder::PercentileFinder>();
+            } break;
+        }
+        std::ifstream file(config.filename, std::ios::binary);
+        auto start = std::chrono::system_clock::now();
+        auto result = finder->find_percentile(file, config.percentile);
+        auto end = std::chrono::system_clock::now();
+        std::wcout
+                    << std::hex << result.result
+                    << std::dec << " " << result.position.first
+                    << std::dec << " " << result.position.last
+                    << std::endl;
+        file.close();
+        auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
+        std::wcout << "duration:"<< ms_int << "\n";
+        watchdog.stop();
     }
 }

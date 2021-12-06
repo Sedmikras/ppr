@@ -7,6 +7,8 @@ using namespace percentile_finder;
 
 ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t looked_up_percentile) {
     watchdog->notify();
+
+    // read end of file, set config
     PartialResult pr {};
     reset_filereader(file);
     file.seekg(0, std::ios::end);
@@ -21,41 +23,17 @@ ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t 
         masker.increment_stage(pr.bucket_index);
         pr = resolve(file);
         if(masker.stage == Stage::LAST) {
-            return find_result_last_try(file, &config, &masker, pr, watchdog);
+            return find_result_last_stage(file, &config, &masker, pr, watchdog, &data_buffer);
         }
-    } while (pr.numbers_in_index > MAX_VECTOR_SIZE && masker.stage != Stage::LAST);
+    } while (pr.numbers_in_index > MAX_BUFFER_SIZE && masker.stage != Stage::LAST);
 
     //find positions of the numbers in the file (bucket is known)
-
-    reset_filereader(file);
-    uint64_t max_readable_vector_size = config.filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(config.filesize / 8.0) : MAX_VECTOR_SIZE;
-    std::vector<double_t> fileData(max_readable_vector_size);
     std::vector<double> real_data;
-    std::map<double, Position> positions;
-    uint64_t to_read = 0;
-    for (uint64_t i = 0; i < config.iterations; i++) {
-        watchdog->notify();
-        to_read = ((i + 1 * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE)) : MAX_BUFFER_SIZE;
-        file.read((char*)&fileData[0], to_read);
-        uint32_t size = (uint32_t)(to_read + to_read % 8) / 8;
+    std::unordered_map<double, Position> positions;
+    find_positions(file, &config, &masker, pr, watchdog, &data_buffer, &real_data, &positions);
 
-        for (uint64_t j = 0; j < size; j++) {
-            double number = fileData[j];
-            uint32_t index = masker.return_index_from_double(number);
-            if (index == pr.bucket_index) {
-                real_data.push_back(number);
-                if(positions.contains(number)) {
-                    Position* p = &(positions.at(number));
-                    auto new_pos = i * max_readable_vector_size * 8 + j * 8;
-                    p->last = new_pos;
-                } else {
-                    Position p{ p.first = i * max_readable_vector_size * 8 + j * 8, p.last = i * max_readable_vector_size * 8 + j * 8};
-                    positions.insert({ number, p });
-                }
-            }
-        }
-    }
-
+    //sort vector and find index in that vector
+    watchdog->notify();
     std::sort(real_data.begin(), real_data.end());
     uint32_t index = get_index_from_sorted_vector(real_data, &config, watchdog);
     if(index == UINT32_MAX) {
@@ -67,19 +45,18 @@ ResolverResult PercentileFinderSerial::find_result(std::ifstream& file, uint8_t 
 
 PartialResult PercentileFinderSerial::resolve(std::ifstream& file) {
     reset_filereader(file);
-    uint64_t max_readable_vector_size = config.filesize < MAX_BUFFER_SIZE ? (uint64_t)ceil(config.filesize / 8.0) : MAX_VECTOR_SIZE;
     uint64_t numbers_counter = 0;
     std::vector<uint64_t> frequencies(masker.get_masked_vector_size());
-    std::vector<double_t> fileData(max_readable_vector_size);
     uint64_t to_read = 0;
 
     for (uint64_t i = 0; i < config.iterations; i++) {
-        to_read = (((i + 1) * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read%8)) : MAX_BUFFER_SIZE;
-        file.read((char*)&fileData[0], to_read);
+        watchdog->notify();
+        to_read = (((i + 1) * MAX_BUFFER_SIZE) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE) - to_read%8) : MAX_BUFFER_SIZE;
+        file.read((char*)&data_buffer[0], to_read);
         uint32_t size = (uint32_t)(to_read) / 8;
 
         for (uint64_t j = 0; j < size; j++) {
-            uint32_t index = masker.return_index_from_double(fileData[j]);
+            uint32_t index = masker.return_index_from_double(data_buffer[j]);
             if (index == UINT32_MAX) {
                 continue;
             }
@@ -108,8 +85,6 @@ ResolverResult PercentileFinderSerial::find_percentile(std::ifstream& file, uint
 void PercentileFinderSerial::reset_config()
 {
     this->masker.stage = Stage::ZERO;
-    this->masker.low = 0;
-    this->masker.high = 0;
     this->config.filesize = 0;
     this->config.iterations = 0;
     this->config.total_number_count = 0;
@@ -118,14 +93,28 @@ void PercentileFinderSerial::reset_config()
 }
 
 PercentileFinderSerial::PercentileFinderSerial() noexcept {
+    this->data_buffer = std::vector<double> (MAX_VECTOR_SIZE, .0);
     this->masker.stage = Stage::ZERO;
     this->config.filesize = 0;
     this->config.iterations = 0;
     this->config.total_number_count = 0;
     this->config.looked_up_percentile = 0;
     this->config.numbers_before = 0;
-    this->masker.low = 0;
-    this->masker.high = 0;
+}
+
+PercentileFinderSerial::PercentileFinderSerial(Watchdog *w) noexcept: PercentileFinder(w) {
+    this->watchdog = w;
+    this->data_buffer = std::vector<double> (MAX_VECTOR_SIZE, .0);
+    this->masker.stage = Stage::ZERO;
+    this->config.filesize = 0;
+    this->config.iterations = 0;
+    this->config.total_number_count = 0;
+    this->config.looked_up_percentile = 0;
+    this->config.numbers_before = 0;
+}
+
+PercentileFinderSerial::~PercentileFinderSerial() {
+    this->data_buffer.clear();
 }
 
 

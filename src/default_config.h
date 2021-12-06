@@ -16,6 +16,16 @@ namespace percentile_finder {
      * MAX_BUFFER_SIZE set to 128MB cause there is limit of 250MB - for reading and checking if memory is OK
      */
 	const std::uint64_t MAX_BUFFER_SIZE = (1 << 27);
+
+    /**
+     * Max buffer size for OpenCL
+     */
+    const std::uint64_t MAX_BUFFER_SIZE_OPENCL = MAX_BUFFER_SIZE / 2;
+
+    /**
+     * Max vector size for OpenCL
+     */
+    const std::uint64_t MAX_VECTOR_SIZE_OPENCL = MAX_BUFFER_SIZE_OPENCL / 8;
     /**
      * MAX_VECTOR_SIZE same as MAX_BUFFER_SIZE but for vectors of double (128MB)
      */
@@ -50,11 +60,6 @@ namespace percentile_finder {
     const std::uint8_t LEFT_SHIFT_COMPLEMENT_SECOND_STAGE = LEFT_SHIFT_COMPLEMENT_FIRST_STAGE - BIT_SHIFT_SECOND_STAGE;
 
     /**
-     * default timeout for watchdog
-     */
-	const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(10);
-
-    /**
      * splits first interval into positive and negative numbers
      */
 	const uint32_t SPLITERATOR_FIRST_INDEX = (1 << (BIT_SHIFT_FIRST_STAGE - 1));
@@ -71,6 +76,8 @@ namespace percentile_finder {
      * bit mask used in number masking last stage
      */
 	const uint32_t BIT_MASK_LAST_STAGE = (1 << BIT_SHIFT_LAST_STAGE) - 1;
+
+    const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(7);
 
 	/**
 	 * The type of percentile solver.
@@ -92,6 +99,7 @@ namespace percentile_finder {
 		uint8_t percentile = 50;
 		FinderType solver_type = FinderType::Serial;
 		std::string device_name = "";
+        bool benchmark = false;
 	};
 
     /**
@@ -166,7 +174,7 @@ namespace percentile_finder {
          * @param index bucket_index of number (for computing new position)
          * @param first_pos starting position of a file (for computing a new position)
          */
-        void position_insert_update_thread_safe(double key, int index, size_t first_pos);
+        void position_insert_update_thread_safe(double key, uint32_t index, size_t first_pos);
 
         /**
          * Gets element from the map if exists
@@ -196,9 +204,36 @@ namespace percentile_finder {
 
     // ------------------------- FUNCTIONS ----------------------------------------------------------------------
 
+    /**
+     * End program with error message
+     * @param e error message
+     */
     void end_with_error_message(ERRORS e);
 
+    /**
+     * Checks if file exists
+     * @param file_path absolute or relative path
+     * @return true if exists
+     */
     bool file_exists(const std::string &file_path);
 
+    /**
+     * Parses arguments given to the program and set them into structure @see{Config}
+     * @param argc
+     * @param argv
+     * @return config structure with parsed arguments
+     */
     Config parse_arguments(int argc, char *argv[]);
+
+    /**
+     * Main function - creates finder, finds percentile, writes result to user, ends
+     * @param config user config parsed from arguments
+     */
+    void solve(Config config);
+
+    /**
+     * Utils I/O resets filereader to beginning position and clears errors
+     * @param file
+     */
+    void reset_filereader(std::ifstream& file);
 }
