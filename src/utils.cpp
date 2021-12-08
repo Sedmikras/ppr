@@ -68,35 +68,80 @@ namespace percentile_finder {
         }
     }
 
+    void end_with_error_message(ERRORS e, std::string message) {
+        print_error_message(e);
+        std::wcout << message.c_str();
+        std::exit((int )e);
+    }
+
+    void print_error_message(ERRORS e) {
+        switch (e) {
+            case percentile_finder::ERRORS::NOT_ENOUGH_ARGUMENTS: {
+                std::wcout << "ERROR:INVALID NUMBER OF ARGUMENTS\n";
+                break;
+            }
+
+            case percentile_finder::ERRORS::UNKNOWN_DEVICE_NAME: {
+                std::wcout << "ERROR:UNKNOWN OPENCL DEVICE\n";
+                break;
+            }
+
+            case percentile_finder::ERRORS::INVALID_FILE_NAME: {
+                std::wcout << "ERROR:FILE NAME IS NOT VALID - IS NOT READABLE\n";
+                break;
+            }
+
+            case percentile_finder::ERRORS::INVALID_PERCENTILE: {
+                std::wcout << "ERROR:INVALID_PERCENTILE - must be [1,100]\n";
+                break;
+            }
+
+            case percentile_finder::ERRORS::NOT_RESPONDING: {
+                std::wcout << "ERROR:APP IS NOT RESPONDING\n";
+                break;
+            }
+            case percentile_finder::ERRORS::FINDER_DIVERGING: {
+                std::wcout << "ERROR:APP IS DIVERGING FROM RESULT\n";
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
+    void end_without_message(ERRORS e) {
+        std::exit((int)e);
+    }
+
 
     void end_with_error_message(ERRORS e) {
         switch (e) {
             case percentile_finder::ERRORS::NOT_ENOUGH_ARGUMENTS: {
-                std::wcout << "INVALID NUMBER OF ARGUMENTS";
+                print_error_message(e);
                 std::exit((int) ERRORS::NOT_ENOUGH_ARGUMENTS);
             }
 
             case percentile_finder::ERRORS::UNKNOWN_DEVICE_NAME: {
-                std::wcout << "UNKNOWN OPENCL DEVICE";
+                print_error_message(e);
                 std::exit((int) ERRORS::UNKNOWN_DEVICE_NAME);
             }
 
             case percentile_finder::ERRORS::INVALID_FILE_NAME: {
-                std::wcout << "FILE NAME IS NOT VALID - IS NOT READABLE";
+                print_error_message(e);
                 std::exit((int) ERRORS::INVALID_FILE_NAME);
             }
 
             case percentile_finder::ERRORS::INVALID_PERCENTILE: {
-                std::wcout << "INVALID_PERCENTILE - must be [1,100]";
+                print_error_message(e);
                 std::exit((int) ERRORS::INVALID_PERCENTILE);
             }
 
             case percentile_finder::ERRORS::NOT_RESPONDING: {
-                std::wcout << "APP IS NOT RESPONDING";
+                print_error_message(e);
                 std::exit((int) ERRORS::INVALID_PERCENTILE);
             }
             case percentile_finder::ERRORS::FINDER_DIVERGING: {
-                std::wcout << "APP IS DIVERGING FROM RESULT";
+                print_error_message(e);
                 std::exit((int) ERRORS::INVALID_PERCENTILE);
             }
             default:
@@ -122,8 +167,15 @@ namespace percentile_finder {
         uint8_t percentile;
 
 
-        if (argc < 4 && argc > 5) {
-            end_with_error_message(ERRORS::NOT_ENOUGH_ARGUMENTS);
+        if (argc < 4 || argc > 5) {
+            std::string s;
+            s.append("Invalid program params, usage:\n");
+            s.append("percentile_finder.exe <file> <percentile> <execution_type> <benchmark_flag>\n");
+            s.append("<file> - file path (aboslute or relative):\n");
+            s.append("<percentile> - number 1 - 100\n");
+            s.append("<execution_type> string - \"single\" \"SMP\" <OpenCL device name>\n");
+            s.append("optional <benchmark_flag> - \"benchmark\" or \"-b\"\n");
+            end_with_error_message(ERRORS::NOT_ENOUGH_ARGUMENTS, s);
         }
 
         file_name = argv[1];
@@ -183,8 +235,9 @@ namespace percentile_finder {
                     finder = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&watchdog, device); break;
                 }
                 else {
+                    percentile_finder::print_error_message(ERRORS::UNKNOWN_DEVICE_NAME);
                     percentile_finder::list_available_device();
-                    percentile_finder::end_with_error_message(ERRORS::UNKNOWN_DEVICE_NAME);
+                    percentile_finder::end_without_message(ERRORS::UNKNOWN_DEVICE_NAME);
                     break;
                 }
                 

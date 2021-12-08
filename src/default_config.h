@@ -105,13 +105,13 @@ namespace percentile_finder {
     /**
      * enum of possible errors
      */
-	enum class ERRORS {
-		NOT_ENOUGH_ARGUMENTS,
-		UNKNOWN_DEVICE_NAME,
-		INVALID_FILE_NAME,
-		INVALID_PERCENTILE,
-		NOT_RESPONDING,
-		FINDER_DIVERGING
+	enum class ERRORS : int {
+		NOT_ENOUGH_ARGUMENTS=-1,
+		UNKNOWN_DEVICE_NAME=-2,
+		INVALID_FILE_NAME=-3,
+		INVALID_PERCENTILE=-4,
+		NOT_RESPONDING=-5,
+		FINDER_DIVERGING=-6
 
 	};
 
@@ -209,6 +209,18 @@ namespace percentile_finder {
      * @param e error message
      */
     void end_with_error_message(ERRORS e);
+
+    /**
+     * Prints error to the console
+     * @param error
+     */
+    void print_error_message(ERRORS e);
+
+    /**
+     * Ends without message to the console
+     * @param e
+     */
+    void end_without_message(ERRORS e);
 
     /**
      * Checks if file exists
