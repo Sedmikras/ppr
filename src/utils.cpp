@@ -187,17 +187,17 @@ namespace percentile_finder {
             } break;
         }
         std::ifstream file(config.filename, std::ios::binary);
-        auto start = std::chrono::system_clock::now();
+        //auto start = std::chrono::system_clock::now();
         auto result = finder->find_percentile(file, config.percentile);
-        auto end = std::chrono::system_clock::now();
+        //auto end = std::chrono::system_clock::now();
         std::wcout
                     << std::hex << result.result
                     << std::dec << " " << result.position.first
                     << std::dec << " " << result.position.last
                     << std::endl;
         file.close();
-        auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
-        std::wcout << "duration:"<< ms_int << "\n";
+        //auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
+        //std::wcout << "duration:"<< ms_int << "\n";
         watchdog.stop();
     }
 }

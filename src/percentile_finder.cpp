@@ -37,24 +37,24 @@ void test_resolver(int argc, char* argv[]) {
             auto r3 = finder_naive->find_percentile(file, i);
 
             auto end = std::chrono::system_clock::now();
-            auto ms_int = duration_cast<std::chrono::milliseconds>(end - start);
-            std::wcout << "naive:" << ms_int << "\n";
+            auto ms_int = std::chrono::duration<double, std::milli>(end - start);
+            std::wcout << "naive:" << ms_int.count() << "\n";
             w.notify();
             start = std::chrono::system_clock::now();
             auto r2 = finder_serial->find_percentile(file, i);
             end = std::chrono::system_clock::now();
-            ms_int = duration_cast<std::chrono::milliseconds>(end - start);
-            std::wcout << "serial:"<< ms_int << "\n";
+            ms_int = std::chrono::duration<double, std::milli>(end - start);
+            std::wcout << "serial:"<< ms_int.count() << "\n";
             start = std::chrono::system_clock::now();
             auto r1 = finder->find_percentile(file, i);
             end = std::chrono::system_clock::now();
-            ms_int = duration_cast<std::chrono::milliseconds>(end - start);
-            std::wcout << "parallel:"<< ms_int << "\n";
+            ms_int = std::chrono::duration<double, std::milli>(end - start);
+            std::wcout << "parallel:"<< ms_int.count() << "\n";
             start = std::chrono::system_clock::now();
             auto r4 = finder_opencl->find_percentile(file, i);
             end = std::chrono::system_clock::now();
-            ms_int = duration_cast<std::chrono::milliseconds>(end - start);
-            std::wcout << "opencl:"<< ms_int << "\n";
+            ms_int = std::chrono::duration<double, std::milli>(end - start);
+            std::wcout << "opencl:"<< ms_int.count() << "\n";
             w.stop();
             std::wcout << "[" << i << "]:" <<r3.result << ";" << r2.result << ";" <<  r1.result << ";" << r4.result << "\n";
         }

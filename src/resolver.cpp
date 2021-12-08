@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string_view>
 #include <execution>
+#include <unordered_map>
 
 namespace percentile_finder {
 
@@ -107,7 +108,7 @@ namespace percentile_finder {
                 number = data_buffer->at(j);
                 if (masker->return_index_from_double(number) == pr.bucket_index) {
                     results_buffer->push_back(number);
-                    if (position_map->contains(number)) {
+                    if (position_map->find(number) != position_map->end()) {
                         Position* p = &(position_map->at(number));
                         auto new_pos = i * max_readable_vector_size * 8 + j * 8;
                         p->last = new_pos;

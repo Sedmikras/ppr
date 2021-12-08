@@ -4,6 +4,7 @@
 #include <thread>
 #include <vector>
 #include <execution>
+#include <unordered_map>
 
 namespace percentile_finder {
 
@@ -188,7 +189,7 @@ namespace percentile_finder {
     void PositionsMap::position_insert_update_thread_safe(double key, uint32_t index, size_t first_pos) {
         std::unique_lock<std::mutex> lock(mutex);
         uint64_t index_64 = index;
-        if (positions.contains(key)) {
+        if (positions.find(key) != positions.end()) {
             Position *p = &(positions.at(key));
             auto new_pos = first_pos + index_64 * 8;
             p->last = new_pos;
@@ -199,7 +200,7 @@ namespace percentile_finder {
     }
 
     Position PositionsMap::get(double key) {
-        if(positions.contains(key)) {
+        if(positions.find(key) != positions.end()) {
             return positions.at(key);
         } else {
             return Position{NULL,NULL};
