@@ -8,46 +8,53 @@
 #include "resolver_parallel.h"
 
 namespace percentile_finder {
-    std::vector<cl::Device> percentile_finder::get_cl_devices() {
-        std::vector<cl::Device> devices;
-        std::vector<cl::Platform> platforms; // get all platforms
-        std::vector<cl::Device> devices_available;
-        auto n = 0; // number of available devices
+    std::vector<std::string> percentile_finder::get_cl_device_names() {
+        std::vector<std::string> devices_names;
+        std::vector<cl::Platform> platforms;
         cl::Platform::get(&platforms);
-        for (auto i = 0; i < platforms.size(); i++) {
-            devices_available.clear();
-            platforms[i].getDevices(CL_DEVICE_TYPE_ALL, &devices_available);
-            if (devices_available.size() == 0) continue; // no device found in plattform i
-            for (auto j = 0; j < devices_available.size(); j++) {
-                n++;
-                devices.push_back(devices_available[j]);
+
+        for (const auto &platform : platforms) {
+            std::vector<cl::Device> devices;
+            platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+            for (auto &device : devices) {
+                devices_names.emplace_back(device.getInfo<CL_DEVICE_NAME>().c_str());
             }
         }
-        return devices_available;
+
+        return devices_names;
     }
 
-    cl::Device percentile_finder::get_device_by_name(std::string device_name) {
-        std::vector<cl::Device> devices = get_cl_devices();
-        for (auto const device : devices) {
-            if (device.getInfo<CL_DEVICE_NAME>() == device_name) {
-                return device;
+    cl::Device percentile_finder::get_device_by_name(std::string p_device_name) {
+        std::vector<cl::Platform> platforms;
+        cl::Platform::get(&platforms);
+
+        for (const auto &platform : platforms) {
+            std::vector<cl::Device> devices;
+            platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
+            for (auto &device : devices) {
+                std::string device_name = device.getInfo<CL_DEVICE_NAME>();
+
+                if (device_name == p_device_name) {
+                    return device;
+                }
             }
         }
-        return cl::Device{};
+
+        throw std::runtime_error("OpenCL device not found");
     }
 
     void percentile_finder::list_available_device() {
         std::wcout << "List of available devices: \n";
-        std::vector<cl::Device> devices = get_cl_devices();
+        std::vector<std::string> devices = get_cl_device_names();
         for (auto &device: devices) {
-            std::cout << "* " << device.getInfo<CL_DEVICE_NAME>() << std::endl;
+            std::cout << "* " << device << std::endl;
         }
     }
 
     bool percentile_finder::device_exists(std::string name) {
-        std::vector<cl::Device> devices = get_cl_devices();
+        std::vector<std::string> devices = get_cl_device_names();
         for (auto &device: devices) {
-            if (device.getInfo<CL_DEVICE_NAME>() == name) {
+            if (device == name) {
                 return true;
             }
         }

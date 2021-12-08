@@ -56,7 +56,7 @@ namespace percentile_finder {
          * Returns list of available CL devices
          * @return vector of OpenCL devices
          */
-        std::vector<cl::Device> get_cl_devices();
+        std::vector<std::string> get_cl_device_names();
         /**
          * List available devices and prints them to STDOUT
          */
@@ -72,6 +72,7 @@ namespace percentile_finder {
          * Returns device by given name or null device
          * @param device_name name of the device
          * @return device instance
+         * @throws std::runtime_error when device is not found
          */
-        cl::Device get_device_by_name(std::string device_name);
+        cl::Device get_device_by_name(std::string p_device_name);
 };

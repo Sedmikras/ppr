@@ -77,7 +77,7 @@ namespace percentile_finder {
      */
 	const uint32_t BIT_MASK_LAST_STAGE = (1 << BIT_SHIFT_LAST_STAGE) - 1;
 
-    const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(7);
+    const std::chrono::seconds DEFAULT_TIMEOUT = std::chrono::seconds(20);
 
 	/**
 	 * The type of percentile solver.

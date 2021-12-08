@@ -24,8 +24,9 @@ void test_resolver(int argc, char* argv[]) {
 	finder = std::make_unique<percentile_finder::PercentileFinderParallel>(&w);
     finder_serial = std::make_unique<percentile_finder::PercentileFinderSerial>(&w);
     finder_naive = std::make_unique<percentile_finder::PercentileFinder>(&w);
-    auto devices = percentile_finder::get_cl_devices();
-    finder_opencl = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&w, devices[0]);
+    auto devices = percentile_finder::get_cl_device_names();
+    auto device = percentile_finder::get_device_by_name(devices[0]);
+    finder_opencl = std::make_unique<percentile_finder::PercentileFinderOpenCL>(&w, device);
 
 
     std::ifstream file(config.filename, std::ios::binary);
