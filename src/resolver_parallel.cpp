@@ -64,7 +64,7 @@ namespace percentile_finder {
                 data_buffer = std::vector<double>(MAX_VECTOR_SIZE, 0);
                 return find_result_last_stage(file, &config, &masker, pr, watchdog, &data_buffer);
             }
-        } while (pr.numbers_in_index > MAX_BUFFER_SIZE_TST && masker.stage != Stage::LAST);
+        } while (pr.numbers_in_index > MAX_BUFFER_SIZE && masker.stage != Stage::LAST);
         reset_filereader(file);
         PositionsMap positions;
         std::vector<double> final_result;
