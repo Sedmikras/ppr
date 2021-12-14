@@ -125,7 +125,7 @@ namespace percentile_finder {
             if(masker.stage == Stage::LAST) {
                 return find_result_last_stage(file, &config, &masker, pr, watchdog, &data_buffer);
             }
-        } while (pr.numbers_in_index > MAX_VECTOR_SIZE && masker.stage != Stage::LAST);
+        } while (pr.numbers_in_index > MAX_BUFFER_SIZE_TST && masker.stage != Stage::LAST);
 
         //find positions of the numbers in the file (bucket is known)
         std::vector<double> real_data;

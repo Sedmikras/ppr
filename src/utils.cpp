@@ -184,13 +184,17 @@ namespace percentile_finder {
         }
         config.filename = file_name;
 
-
-        percentile = static_cast<uint8_t>(std::stoi(argv[2]));
-        if (percentile > 100 || percentile == 0) {
-            end_with_error_message(ERRORS::INVALID_PERCENTILE);
+        try {
+            auto value = std::stoi(argv[2]);
+            if (value < 1 || value > 100) {
+                end_with_error_message(ERRORS::INVALID_PERCENTILE);
+            } else {
+                percentile = static_cast<uint8_t>(value);
+                config.percentile = percentile;
+            }
         }
-        else {
-            config.percentile = percentile;
+        catch(...){
+            end_with_error_message(ERRORS::INVALID_PERCENTILE);
         }
 
         std::string exec_mode_string = argv[3];
@@ -214,10 +218,13 @@ namespace percentile_finder {
     }
 
     void solve(Config config) {
-        percentile_finder::Watchdog watchdog (std::chrono::seconds(15),
-           []() {
-               end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
-           }
+        percentile_finder::Watchdog watchdog (percentile_finder::DEFAULT_TIMEOUT,
+               []() {
+                   std::wcout << "Program is not responding. Wait for it ? Y/N";
+                   int response = getchar();
+                   if (response == 'N' || response == 'n')
+                       end_with_error_message(percentile_finder::ERRORS::NOT_RESPONDING);
+               }
         );
 
         std::unique_ptr<percentile_finder::PercentileFinder> finder;
@@ -250,6 +257,14 @@ namespace percentile_finder {
         //auto start = std::chrono::system_clock::now();
         auto result = finder->find_percentile(file, config.percentile);
         //auto end = std::chrono::system_clock::now();
+        if (result.result == INFINITY) {
+            std::string message;
+            message.append("Unable to find percentile ");
+            message.append(std::to_string(config.percentile));
+            message.append("in file ");
+            message.append(config.filename);
+            end_with_error_message(ERRORS::FINDER_DIVERGING, message.c_str());
+        }
         std::wcout
                     << std::hex << result.result
                     << std::dec << " " << result.position.first

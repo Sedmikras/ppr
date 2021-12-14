@@ -31,11 +31,11 @@ void test_resolver(int argc, char* argv[]) {
 
     std::ifstream file(config.filename, std::ios::binary);
 
-	for (uint8_t i = 2; i <= 100; i++) {
+	for (uint8_t i = 1; i <= 100; i++) {
 		config.percentile = i;
 		try {
             auto start = std::chrono::system_clock::now();
-            auto r3 = finder_naive->find_percentile(file, i);
+           auto r3 = finder_naive->find_percentile(file, i);
 
             auto end = std::chrono::system_clock::now();
             auto ms_int = std::chrono::duration<double, std::milli>(end - start);

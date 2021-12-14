@@ -30,6 +30,9 @@ namespace percentile_finder {
 
 
     bool NumberMasker::in_span(double number) const {
+        if (number < 0) {
+            return (number > this->low && number <= this->high);
+        }
         return (number >= this->low && number < this->high);
     }
 
@@ -52,53 +55,54 @@ namespace percentile_finder {
 
 	Border NumberMasker::get_border_values_second_stage(uint32_t index) {
 		Border b {-INFINITY, INFINITY };
+        int64_t highint, lowint;
 		int64_t var_index = index;
+        double var_low, var_high;
 		if (index < SPLITERATOR_FIRST_INDEX) {
-			var_index = ~var_index & BIT_MASK_FIRST_STAGE;
-			var_index = var_index + SPLITERATOR_FIRST_INDEX;
-			int64_t lowint = var_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
-			double var_low = *(double*)&lowint;
-			lowint = (var_index -1) << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
-			double var_high = *(double*)&lowint;
-			b.low = var_low;
-			b.high = var_high;
+			var_index = ~var_index & ((1 << BIT_SHIFT_FIRST_STAGE) -1);
+		} else {
+			var_index = index - (SPLITERATOR_FIRST_INDEX);
 		}
-		else {
+        lowint = var_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
+        highint = (var_index +1) << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
 
-			var_index = index - SPLITERATOR_FIRST_INDEX;
-			int64_t lowint = var_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
-			double low = *(double*)&lowint;
-			b.low = low;
-			lowint = (var_index + 1) << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE;
-			double high = *(double*)&lowint;
-			b.high = high;
-		}
+        var_low = *(double*)&lowint;
+        var_high = *(double*)&highint;
+
+        if (var_low > var_high) {
+            b.low = var_high;
+            b.high = var_low;
+        } else {
+            b.low = var_low;
+            b.high = var_high;
+        }
 		return b;
 	}
 
 	Border NumberMasker::get_border_values_last_stage(uint32_t index) const {
 		Border b {-INFINITY,INFINITY};
-        uint64_t complement, complement2;
-
+        uint64_t all_bits_index;
+        int64_t lowint, first_stage_index;
+        int64_t highint = 0;
         if(this->low < 0) {
-            double source = this->low;
-            uint64_t all_bits_index = index;
-            int64_t highint = *(int64_t*)&source;
-            complement = ((all_bits_index) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
-            complement2 = ((all_bits_index + 1) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
-            complement = (highint - complement);
-            complement2 = (highint - complement2);
+            all_bits_index = ~index & BIT_MASK_SECOND_STAGE;
+            first_stage_index = (~zero_phase_index & ((1 << BIT_SHIFT_FIRST_STAGE) - 1));
+
         } else {
-            double source = this->high;
-            uint64_t all_bits_index = index;
-            int64_t highint = *(int64_t*)&source;
-            complement2 = ((all_bits_index) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
-            complement = ((all_bits_index + 1) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
-            complement = (highint - complement);
-            complement2 = (highint - complement2);
+            all_bits_index = index;
+            first_stage_index = zero_phase_index & BIT_MASK_FIRST_STAGE;
         }
-        b.low = *(double*)&complement;
-        b.high = *(double*)&complement2;
+        highint = ((first_stage_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE) | ((all_bits_index +1) << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE));
+        lowint = (first_stage_index << LEFT_SHIFT_COMPLEMENT_FIRST_STAGE) | (all_bits_index << LEFT_SHIFT_COMPLEMENT_SECOND_STAGE);
+        double low_d = *(double*)&lowint;
+        double high_d = *(double*)&highint;
+        if (low_d > high_d) {
+            b.low = high_d;
+            b.high = low_d;
+        } else {
+            b.low = low_d;
+            b.high = high_d;
+        }
 		return b;
 	}
 

@@ -34,7 +34,6 @@ namespace percentile_finder {
          * Constructor
          * @param pconfig pointer to config
          * @param file pointer to ifstream
-         * //TODO REMOVE
          * @param pcounter pointer to counter
          */
         explicit DataMiner(ParallelConfig* pconfig, std::ifstream* file, uint64_t* pcounter) {

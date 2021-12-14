@@ -20,6 +20,9 @@ const std::string cl_program_src = R"CLC(
     }
 
     bool is_in_range(const double value, const double min, const double max) {
+        if (value < 0) {
+            return value > min && value <= max;
+        }
         return value >= min && value < max;
     }
 
@@ -30,9 +33,9 @@ const std::string cl_program_src = R"CLC(
         if (is_valid(value) && is_in_range(value, min, max)) {
             long unsigned_value = as_long(value);
             if (value < 0) {
-                index = (~(unsigned_value >> shift)) & 524287;
+                index = (~(unsigned_value >> shift)) & mask;
             } else {
-                index = offset + ((unsigned_value >> shift) & 524287);
+                index = offset + ((unsigned_value >> shift) & mask);
             }
         }
         indexes[i] = index;

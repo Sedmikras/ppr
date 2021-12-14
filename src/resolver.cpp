@@ -31,7 +31,7 @@ namespace percentile_finder {
         uint64_t to_read = 0;
         double value = INFINITY;
         for (uint64_t i = 0; i < iterations; i++) {
-            to_read = (((i + 1) * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE) + (8 - to_read % 8)) : MAX_BUFFER_SIZE;
+            to_read = (((i + 1) * MAX_BUFFER_SIZE) > filesize) ? (filesize - (i * MAX_BUFFER_SIZE) - to_read % 8) : MAX_BUFFER_SIZE;
             file.read((char*)&file_data[0], std::streamsize(to_read));
             uint32_t size = (uint32_t)(to_read / 8);
 
@@ -66,15 +66,17 @@ namespace percentile_finder {
 
     ResolverResult find_result_last_stage(std::ifstream& file, PercentileFinderConfig* config, NumberMasker* masker, PartialResult pr, Watchdog* watchdog, std::vector<double>* data_buffer) {
         reset_filereader(file);
-        auto iterations = ((config->filesize / 8) / MAX_VECTOR_SIZE);
+
+        auto iterations = ((config->filesize / 8) / data_buffer->size());
         uint64_t max_readable_vector_size = config->filesize < (data_buffer->size() * sizeof(double)) ? (uint64_t)ceil(config->filesize / 8) : data_buffer->size();
-        std::pair<double, Position> positions;
+        std::pair<double, Position> positions {INFINITY, {UINT64_MAX, UINT64_MAX}};
         uint64_t to_read = 0;
+        std::vector<double> results = std::vector<double>();
         double result = INFINITY;
         uint32_t size = 0, index = UINT32_MAX;
         for (uint64_t i = 0; i < iterations; i++) {
             watchdog->notify();
-            to_read = (((i + 1) * (MAX_VECTOR_SIZE * sizeof(double))) > config->filesize) ? (config->filesize - (i * (data_buffer->size() * sizeof(double))) - to_read % 8) : (data_buffer->size() * sizeof(double));
+            to_read = (((i + 1) * (data_buffer->size() * sizeof(double))) > config->filesize) ? (config->filesize - (i * (data_buffer->size() * sizeof(double))) - to_read % 8) : (data_buffer->size() * sizeof(double));
             file.read((char*)data_buffer->data(), std::streamsize(to_read));
             size = (uint32_t)(to_read / 8);
 
@@ -82,12 +84,17 @@ namespace percentile_finder {
                 index = masker->return_index_from_double(data_buffer->at(j));
                 if (index == pr.bucket_index) {
                     result = data_buffer->at(j);
+                    results.push_back(result);
                     Position* p = &positions.second;
                     auto new_pos = i * max_readable_vector_size * 8 + j * 8;
+                    if (p->first == UINT64_MAX) {
+                        p->first = new_pos;
+                    }
                     p->last = new_pos;
                 }
             }
         }
+        std::sort(results.begin(), results.end());
         ResolverResult r{ r.result = result, positions.second };
         return r;
     }
