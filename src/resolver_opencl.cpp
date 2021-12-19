@@ -81,8 +81,10 @@ namespace percentile_finder {
         //read data by parts and send them to OpenCL device for processing (bit masking)
         for (uint64_t i = 0; i < config.iterations; i++) {
             watchdog->notify();
-            to_read = (((i + 1) * MAX_BUFFER_SIZE_OPENCL) > config.filesize) ? (config.filesize - (i * MAX_BUFFER_SIZE_OPENCL)) : MAX_BUFFER_SIZE_OPENCL;
+            size_t position_in_file = static_cast<size_t>(file.tellg());
+            to_read = ((position_in_file + MAX_BUFFER_SIZE_OPENCL) > config.filesize) ? (config.filesize - position_in_file) : MAX_BUFFER_SIZE_OPENCL;
             to_read = to_read  - (to_read % 8);
+            auto remains = config.filesize - position_in_file;
             file.read((char*)&data_buffer[0], std::streamsize(to_read));
             error = queue.enqueueWriteBuffer(opencl_data_buffer, CL_TRUE, 0, (cl::size_type) to_read, data_buffer.data());
             error = queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange((cl::size_type) to_read));

@@ -39,6 +39,7 @@ void test_resolver(int argc, char* argv[]) {
 
             auto end = std::chrono::system_clock::now();
             auto ms_int = std::chrono::duration<double, std::milli>(end - start);
+            std::wcout << "TIMES:";
             std::wcout << "naive:" << ms_int.count() << "\n";
             w.notify();
             start = std::chrono::system_clock::now();
@@ -57,6 +58,12 @@ void test_resolver(int argc, char* argv[]) {
             ms_int = std::chrono::duration<double, std::milli>(end - start);
             std::wcout << "opencl:"<< ms_int.count() << "\n";
             w.stop();
+            std::wcout << "POSITIONS:";
+            std::wcout << "serial:" << r2.position.first << ";" << r2.position.last << "\n";
+            std::wcout << "naive:" << r3.position.first << ";" << r3.position.last << "\n";
+            std::wcout << "SMP:" << r1.position.first << ";" << r1.position.last << "\n";
+            std::wcout << "OpenCL:" << r4.position.first << ";" << r4.position.last << "\n";
+            std::wcout << "RESULTS:";
             std::wcout << "[" << i << "]:" <<r3.result << ";" << r2.result << ";" <<  r1.result << ";" << r4.result << "\n";
         }
         catch (const std::exception& e) {

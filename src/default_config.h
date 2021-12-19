@@ -20,7 +20,7 @@ namespace percentile_finder {
     /**
      * Max buffer size for OpenCL
      */
-    const std::uint64_t MAX_BUFFER_SIZE_OPENCL = MAX_BUFFER_SIZE / 2;
+    const std::uint64_t MAX_BUFFER_SIZE_OPENCL = MAX_BUFFER_SIZE / 6;
 
     /**
      * Max vector size for OpenCL
